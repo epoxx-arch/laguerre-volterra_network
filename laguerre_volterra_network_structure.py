@@ -18,8 +18,8 @@
 import numpy as np
 import math
 
-# Class defining structure of the Laguerre-Volterra network (LVN) for a generic set of parameters
 class LVN:
+    ''' Class defining structure of the Laguerre-Volterra network (LVN) for a generic set of parameters. '''
     def __init__(self):
         # Structural parameters
         self.L = None           # laguerre_order
@@ -28,16 +28,16 @@ class LVN:
         self.T = None           # sampling_interval
 
         
-    # Define order of laguerre filter-bank, number of hidden layer units and polynomial activation order
     def define_structure(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval):
+    ''' Define order of laguerre filter-bank, number of hidden layer units and polynomial activation order. '''
         self.L = laguerre_order
         self.H = num_hidden_units
         self.Q = polynomial_order
         self.T = sampling_interval
         
-        
-    # Normalize hidden unit input weights to unit norm and scale polynomial coefficients according to the hidden unit it belongs and the polynomial order
+    
     def normalize_scale_parameters(self, hidden_units_weights, polynomial_coefficients):
+    ''' Normalize hidden unit input weights to unit norm and scale polynomial coefficients according to the hidden unit it belongs and the polynomial order. ''' 
         # Shape of the dependent parameters are defined by structural parameters 
         if np.shape(hidden_units_weights) != (self.H, self.L):
             print("Error, wrong shape of hidden unit weights")
@@ -62,9 +62,9 @@ class LVN:
             
         return list(normalized_weights), list(scaled_coefficients)
     
-        
-    # Compute output from imput time-series for a given set of dependent continuous parameters (smoothing constant, filterbank-nonlinearities weights, polynomial coefficients and output offset)
+      
     def compute_output(self, x, laguerre_alpha, hidden_units_weights, polynomial_coefficients, output_offset, weights_modified):
+    ''' [Method from original LVN] Compute output from input time-series for a given set of dependent continuous parameters (smoothing constant, filterbank-nonlinearities weights, polynomial coefficients and output offset). '''
         ## Error checking
         # Network structure must be specified before dependent parameters
         if self.L == None or self.H == None or self.Q == None:
@@ -85,7 +85,7 @@ class LVN:
         if weights_modified:
             hidden_units_weights, polynomial_coefficients = self.normalize_scale_parameters(hidden_units_weights, polynomial_coefficients)
         
-        # Pre-compute alpha square root to avoid repeated computation
+        # Keep square root of alpha to avoid repeated computation
         alpha_sqrt = np.sqrt(laguerre_alpha)
         
         # Initiate Laguerre filter bank
@@ -107,7 +107,7 @@ class LVN:
             
             # Compute and accumulate hidden units outputs
             for h in range(self.H):
-                # compute hidden unit input via inner product between filter-bank outputs and weights[:, h]
+                # compute hidden unit input via inner product between filter-bank outputs and weights[h, :]
                 weighted_inputs = sum([w * v for w, v in zip(list( np.array(hidden_units_weights)[h, :] ), filter_bank_outputs)])
                 
                 # compute hidden unit output from polynomial coefficients
@@ -121,8 +121,9 @@ class LVN:
         return y
         
         
-#
 def laguerre_filter_memory(alpha):
+''' Rough estimate of the extent of significative values in the Laguerre bank's impulse responses. '''
+
     M = (-30 - math.log(1 - alpha)) / math.log(alpha)
     M = math.ceil(M)
     

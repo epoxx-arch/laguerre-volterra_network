@@ -59,6 +59,7 @@ def NMSE_explicit_memory(y, y_pred, M):
     return NMSE
 
 # Break flat list-like solution into [alpha, W, C, offset] for a given LVN structure
+# USED WITH METAHEURISTICS
 def decode_solution(candidate_solution, L, H, Q):
     # Identify solution members
     alpha = candidate_solution[0]
