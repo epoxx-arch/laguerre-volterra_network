@@ -29,7 +29,7 @@ class LVN:
 
         
     def define_structure(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval):
-    ''' Define order of laguerre filter-bank, number of hidden layer units and polynomial activation order. '''
+        ''' Define order of laguerre filter-bank, number of hidden layer units and polynomial activation order. '''
         self.L = laguerre_order
         self.H = num_hidden_units
         self.Q = polynomial_order
@@ -37,7 +37,7 @@ class LVN:
         
     
     def normalize_scale_parameters(self, hidden_units_weights, polynomial_coefficients):
-    ''' Normalize hidden unit input weights to unit norm and scale polynomial coefficients according to the hidden unit it belongs and the polynomial order. ''' 
+        ''' Normalize hidden unit input weights to unit norm and scale polynomial coefficients according to the hidden unit it belongs and the polynomial order. ''' 
         # Shape of the dependent parameters are defined by structural parameters 
         if np.shape(hidden_units_weights) != (self.H, self.L):
             print("Error, wrong shape of hidden unit weights")
@@ -64,7 +64,7 @@ class LVN:
     
       
     def compute_output(self, x, laguerre_alpha, hidden_units_weights, polynomial_coefficients, output_offset, weights_modified):
-    ''' [Method from original LVN] Compute output from input time-series for a given set of dependent continuous parameters (smoothing constant, filterbank-nonlinearities weights, polynomial coefficients and output offset). '''
+        ''' [Method from original LVN] Compute output from input time-series for a given set of dependent continuous parameters (smoothing constant, filterbank-nonlinearities weights, polynomial coefficients and output offset). '''
         ## Error checking
         # Network structure must be specified before dependent parameters
         if self.L == None or self.H == None or self.Q == None:
@@ -122,7 +122,7 @@ class LVN:
         
         
 def laguerre_filter_memory(alpha):
-''' Rough estimate of the extent of significative values in the Laguerre bank's impulse responses. '''
+    ''' Rough estimate of the extent of significative values in the Laguerre bank's impulse responses. '''
 
     M = (-30 - math.log(1 - alpha)) / math.log(alpha)
     M = math.ceil(M)
