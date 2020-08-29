@@ -57,8 +57,8 @@ class RLVN:
         return bank_outputs
         
         
-    def compute_feature_matrix(self, signal, alpha, weights_range):
-        ''' Generates random weights withing the specified range, linearly computes hidden units inputs and then compute the separated "coefficientless" polynomial outputs.'''
+    def compute_feature_matrix_rand(self, signal, alpha, weights_range):
+        ''' Generates random weights within the specified range, linearly computes hidden units inputs and then compute the separated "coefficientless" polynomial outputs.'''
         
         # Sanity check
         if alpha <= 0:
@@ -82,7 +82,7 @@ class RLVN:
         # print(random_weights)
         
         # The input of each hidden node at some moment is the dot product between a random vector and the outputs of the Laguerre bank
-        hidden_nodes_in = np.matmul(laguerre_outputs.transpose(), random_weights)
+        hidden_nodes_in = np.matmul(laguerre_outputs.T, random_weights)
         # print('Nodes input')
         # print(np.shape(hidden_nodes_in))
         # print(hidden_nodes_in)
@@ -93,8 +93,45 @@ class RLVN:
             #print(np.shape(feature_matrix[:, 1  + (q - 1) * self.H : 1 + q * self.H] ))
             feature_matrix[:, 1  + (q - 1) * self.H : 1 + q * self.H] = np.power(hidden_nodes_in, q)
         
-        print('Feature matrix')
-        print(np.shape(feature_matrix))
-        print(feature_matrix)
+        # print('Feature matrix')
+        # print(np.shape(feature_matrix))
+        # print(feature_matrix)
+        
+        return random_weights, feature_matrix
+        
+    def compute_feature_matrix_det(self, signal, alpha, random_weights):
+        ''' With given random weights, linearly computes hidden units inputs and then compute the separated "coefficientless" polynomial outputs.'''
+        
+        # Sanity check
+        if alpha <= 0:
+            print('Error, alpha must be positive')
+            exit(-1)
+        if len(signal) == 0:
+            print('Error, signal must be nonempty.')
+            exit(-1)
+            
+        # Propagation through Laguerre filter bank returns an (L,N) matrix
+        N = len(signal)
+        laguerre_outputs = self.propagate_laguerre_filterbank(signal, alpha)
+        # print('Laguerre')
+        # print(np.shape(laguerre_outputs))
+        # print(laguerre_outputs)
+        
+        
+        # The input of each hidden node at some moment is the dot product between a random vector and the outputs of the Laguerre bank
+        hidden_nodes_in = np.matmul(laguerre_outputs.T, random_weights)
+        # print('Nodes input')
+        # print(np.shape(hidden_nodes_in))
+        # print(hidden_nodes_in)
+        
+        # The feature matrix is (N, HQ+1), containing Q polynomial maps for each hidden node without coefficients
+        feature_matrix = np.ones((N, self.H * self.Q + 1))
+        for q in range(1, self.Q + 1):
+            #print(np.shape(feature_matrix[:, 1  + (q - 1) * self.H : 1 + q * self.H] ))
+            feature_matrix[:, 1  + (q - 1) * self.H : 1 + q * self.H] = np.power(hidden_nodes_in, q)
+        
+        # print('Feature matrix')
+        # print(np.shape(feature_matrix))
+        # print(feature_matrix)
         
         return feature_matrix
