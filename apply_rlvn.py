@@ -31,23 +31,44 @@ test_in, test_out = read_io('./signals_and_systems/large_finite_test.csv')
 
 
 L = 5
-H = 3
+H = 5
 Q = 4
 Fs = 25
-weights_range = 0.01
+wrange = 1
 alpha = 0.44
 ntimes = 30
 model = RLVN(L,H,Q, Fs)
 
-print('LVN-like')
+print('LVN-like (H maps from filter bank to hidden layer)')
 train_errors = []
 test_errors = []
+extended = False
 for _ in range(ntimes):
-    model.randomize_weights(weights_range)
-    model.train(train_in, train_out, alpha, False)
-    estimated_train_out = model.predict(train_in)
-    estimated_test_out = model.predict(test_in)
+    model.randomize_weights(weights_range = wrange, extended_weights = extended)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False, extended_weights = extended)
+    estimated_train_out = model.predict(in_signal = train_in, extended_weights = extended)
+    estimated_test_out = model.predict(in_signal = test_in, extended_weights = extended)
 
+    nmse_train = NMSE(train_out, estimated_train_out, alpha)
+    nmse_test = NMSE(test_out, estimated_test_out, alpha)
+    train_errors.append(nmse_train)
+    test_errors.append(nmse_test)
+    
+print(f'NMSE train: {np.mean(train_errors)} {np.std(train_errors)}')
+print(f'NMSE  test: {np.mean(test_errors)} {np.std(test_errors)}')
+
+
+print('Extended (HQ maps from filter bank to hidden layer)')
+train_errors = []
+test_errors = []
+extended = True
+for _ in range(ntimes):
+    model.randomize_weights(weights_range = wrange, extended_weights = extended)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False, extended_weights = extended)
+    
+    estimated_train_out = model.predict(in_signal = train_in, extended_weights = extended)
+    estimated_test_out =  model.predict(in_signal = test_in, extended_weights = extended)
+    
     nmse_train = NMSE(train_out, estimated_train_out, alpha)
     nmse_test = NMSE(test_out, estimated_test_out, alpha)
     train_errors.append(nmse_train)
@@ -55,30 +76,3 @@ for _ in range(ntimes):
         
 print(f'NMSE train: {np.mean(train_errors)} {np.std(train_errors)}')
 print(f'NMSE  test: {np.mean(test_errors)} {np.std(test_errors)}')
-
-print('Extended')
-train_errors = []
-test_errors = []
-for _ in range(ntimes):
-    model.randomize_weights_ext(weights_range)
-    model.train_ext(train_in, train_out, alpha, False)
-    
-    estimated_train_out = model.predict_ext(train_in)
-    estimated_test_out =  model.predict_ext(test_in)
-    
-    nmse_train = NMSE(train_out, estimated_train_out, alpha)
-    nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    train_errors.append(nmse_train)
-    test_errors.append(nmse_test)
-        
-print(f'NMSE train: {np.mean(train_errors)} {np.std(train_errors)}')
-print(f'NMSE  test: {np.mean(test_errors)} {np.std(test_errors)}')
-
-# model.train(train_in, train_out, alpha, True)
-# estimated_train_out = model.predict(train_in)
-# estimated_test_out = model.predict(test_in)
-
-# print('ridge nmse train')
-# print(NMSE(train_out, estimated_train_out, alpha))
-# print('ridge nmse test')
-# print(NMSE(test_out, estimated_test_out, alpha))

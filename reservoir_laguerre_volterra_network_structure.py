@@ -42,24 +42,6 @@ class RLVN:
         self.ls_solution = None
         # The Laguerre alpha used to train the model is kept
         self.train_alpha = None 
-        
-        
-    def randomize_weights(self, weights_range):
-        ''' Random weights are (L, H) in |rand| < |weights_range|. '''
-        
-        self.random_weights = (np.random.rand(self.L, self.H) * 2 * weights_range) - weights_range
-        # print('Weights')
-        # print(np.shape(random_weights))
-        # print(random_weights)
-        
-    def randomize_weights_ext(self, weights_range):
-        ''' Random weights are (L, H) in |rand| < |weights_range|. '''
-        
-        self.random_weights = (np.random.rand(self.L, self.H * self.Q) * 2 * weights_range) - weights_range
-        # print('Weights')
-        # print(np.shape(random_weights))
-        # print(random_weights)
-    
     
     def propagate_laguerre_filterbank(self, signal, alpha):
         ''' Propagate input signal through the Laguerre filter bank.
@@ -88,13 +70,36 @@ class RLVN:
         bank_outputs = bank_outputs[:,1:]
         
         return bank_outputs
+    
+    
+    def randomize_weights(self, weights_range, extended_weights):
+        ''' Random weights are (L, H) or (L, HQ) depending upon extended_weights, in |rand| < |weights_range|. '''
+        # Sanity check
+        if isinstance(weights_range, Iterable):
+            print('Error, range must be a scalar')
+            exit(-1)
+        if weights_range == 0:
+            print('Error range must be nonzero')
+            exit(-1)
+        if not isinstance(extended_weights, bool):
+            print('Error, extended_weights must be a boolean')
+            exit(-1)
+        
+        # Randomize weights
+        if extended_weights:    # W = (L, HQ)
+            self.random_weights = (np.random.rand(self.L, self.H * self.Q) * 2 * weights_range) - weights_range
+        else:                   # W = (L, H)
+            self.random_weights = (np.random.rand(self.L, self.H) * 2 * weights_range) - weights_range
         
         
-    def compute_feature_matrix(self, signal, alpha):
+    def compute_feature_matrix(self, signal, alpha, extended_weights):
         ''' Given an in-signal, linearly computes hidden units inputs and then compute the separated "coefficientless" polynomial outputs.'''
         
-        if not(isinstance(self.random_weights, Iterable)):
+        if not isinstance(self.random_weights, Iterable):
             print('Error, randomize weights before computing the feature matrix for some signal.')
+            exit(-1)
+        if not isinstance(extended_weights, bool):
+            print('Error, extended_weights must be a boolean')
             exit(-1)
          
         # Propagation through Laguerre filter bank returns an (L,N) matrix
@@ -106,17 +111,24 @@ class RLVN:
         
         # The input of each hidden node at some moment is the dot product between a random vector and the outputs of the Laguerre bank
         # Hidden nodes input matrix is (N,H)
-        hidden_nodes_in = np.matmul(laguerre_outputs.T, self.random_weights)
+        hidden_nodes_in = laguerre_outputs.T @ self.random_weights
         # print('Nodes input')
         # print(np.shape(hidden_nodes_in))
         # print(hidden_nodes_in)
         
         # The feature matrix is (N, HQ+1), containing Q polynomial maps for each hidden node without coefficients
         feature_matrix = np.ones((N, self.H * self.Q + 1))
-        for q in range(1, self.Q + 1):
-            #print(np.shape(feature_matrix[:, 1  + (q - 1) * self.H : 1 + q * self.H] ))
-            feature_matrix[:, 1  + (q - 1) * self.H : 1 + q * self.H] = np.power(hidden_nodes_in, q)
         
+        # W = (L, HQ)
+        if extended_weights:
+            for q in range(1, self.Q + 1):
+                feature_matrix[:, 1  + (q - 1) * self.H : 1 + q * self.H] = np.power(hidden_nodes_in[:,(q - 1) * self.H : q * self.H], q)
+        
+        # W = (L, H)
+        else:                       
+            for q in range(1, self.Q + 1):
+                feature_matrix[:, 1  + (q - 1) * self.H : 1 + q * self.H] = np.power(hidden_nodes_in, q)
+            
         # print('Feature matrix')
         # print(np.shape(feature_matrix))
         # print(feature_matrix)
@@ -124,40 +136,8 @@ class RLVN:
         return feature_matrix
         
         
-    def compute_feature_matrix_ext(self, signal, alpha):
-        ''' Given an in-signal, linearly computes hidden units inputs and then compute the separated "coefficientless" polynomial outputs.'''
         
-        if not(isinstance(self.random_weights, Iterable)):
-            print('Error, randomize weights before computing the feature matrix for some signal.')
-            exit(-1)
-         
-        # Propagation through Laguerre filter bank returns an (L,N) matrix
-        N = len(signal)
-        laguerre_outputs = self.propagate_laguerre_filterbank(signal, alpha)
-        # print('Laguerre')
-        # print(np.shape(laguerre_outputs))
-        # print(laguerre_outputs)
-        
-        # The input of each hidden node at some moment is the dot product between a random vector and the outputs of the Laguerre bank
-        # Hidden nodes input matrix of Extended LVN is (N,HQ) 
-        hidden_nodes_in = np.matmul(laguerre_outputs.T, self.random_weights)
-        # print('Nodes input')
-        # print(np.shape(hidden_nodes_in))
-        # print(hidden_nodes_in)
-        
-        # The feature matrix is (N, HQ+1), containing H random projections for each polynomial order
-        feature_matrix = np.ones((N, self.H * self.Q + 1))
-        for q in range(1, self.Q + 1):
-            feature_matrix[:, 1  + (q - 1) * self.H : 1 + q * self.H] = np.power(hidden_nodes_in[:,(q - 1) * self.H : q * self.H], q)
-        
-        # print('Feature matrix')
-        # print(np.shape(feature_matrix))
-        # print(feature_matrix)
-        
-        return feature_matrix
-        
-        
-    def train(self, in_signal, out_signal, alpha, l2_regularization):
+    def train(self, in_signal, out_signal, alpha, l2_regularization, extended_weights):
         ''' Computes nonlinear random feature matrix from input signal and estimates a linear map to the output signal.
             It is possible to consider L2-regularization, performing Ridge regression. '''
         
@@ -173,7 +153,7 @@ class RLVN:
             exit(-1)
             
         # Compute nonlinear feature matrix with the randomized weights
-        feature_matrix = self.compute_feature_matrix(in_signal, alpha)
+        feature_matrix = self.compute_feature_matrix(signal=in_signal, alpha=alpha, extended_weights=extended_weights)
         # Keep alpha used to train the model (only after the function calls that verify alpha values)
         self.train_alpha = alpha
         
@@ -198,9 +178,9 @@ class RLVN:
         
         # print('sol')
         # print(self.ls_solution)
+    
         
-        
-    def predict(self, in_signal):
+    def predict(self, in_signal, extended_weights):
         ''' Predicts output signal using the current least squares solution. '''
         
         # Sanity check
@@ -211,71 +191,10 @@ class RLVN:
             print('Error, input signal must be an iterable object')
             exit(-1)
             
-        feature_matrix = self.compute_feature_matrix(in_signal, self.train_alpha)
-        out_signal = np.matmul(feature_matrix, self.ls_solution)
+        feature_matrix = self.compute_feature_matrix(signal=in_signal, alpha=self.train_alpha, extended_weights=extended_weights)
+        out_signal = feature_matrix @ self.ls_solution
         
-        return out_signal
-    
-    
-    def train_ext(self, in_signal, out_signal, alpha, l2_regularization):
-        ''' Computes nonlinear random feature matrix from input signal and estimates a linear map to the output signal.
-            It is possible to consider L2-regularization, performing Ridge regression. '''
-        
-        # Sanity checks
-        if not(isinstance(in_signal, Iterable) and isinstance(out_signal, Iterable)):
-            print('Error, both input and output signals must be iterable objects.')
-            exit(-1)
-        if len(in_signal) != len(out_signal):
-            print('Error, length of input and output signals must be equal.')
-            exit(-1)
-        if not isinstance(l2_regularization, bool):
-            print('Error, L2 regularization must be a boolean.')
-            exit(-1)
-            
-        # Compute nonlinear feature matrix with the randomized weights
-        feature_matrix = self.compute_feature_matrix_ext(in_signal, alpha)
-        # Keep alpha used to train the model (only after the function calls that verify alpha values)
-        self.train_alpha = alpha
-        
-        if l2_regularization:
-            lamb = 1e2
-            diagonal_ridge = lamb*np.identity(feature_matrix.shape[1])
-            diagonal_ridge[0,0] = 1
-            
-            beta, _, rank, _ = np.linalg.lstsq( feature_matrix.T @ feature_matrix + diagonal_ridge,
-                                                feature_matrix.T @ out_signal, rcond=None)
-           
-            # # Normal equation 
-            # beta, _, rank, _ = np.linalg.lstsq( feature_matrix.T.dot(feature_matrix), feature_matrix.T.dot(out_signal), rcond=None)
-            # print('ridge')
-            # print(np.shape(feature_matrix.T @ feature_matrix))
-            # print(np.linalg.matrix_rank(feature_matrix.T @ feature_matrix))
-        else:
-            beta, _, rank, _ = np.linalg.lstsq(feature_matrix, out_signal, rcond=None)
-            # print('unreg')
-            # print(np.shape(feature_matrix))
-            # print(np.linalg.matrix_rank(feature_matrix))
-        self.ls_solution = beta
-        
-        # print('sol')
-        # print(self.ls_solution)
-        
-        
-    def predict_ext(self, in_signal):
-        ''' Predicts output signal using the current least squares solution. '''
-        
-        # Sanity check
-        if not isinstance(self.ls_solution, Iterable) or self.train_alpha == None:
-            print('Error, train the model to define a least squares solution before predicting outputs.')
-            exit(-1)
-        if not isinstance(in_signal, Iterable):
-            print('Error, input signal must be an iterable object')
-            exit(-1)
-            
-        feature_matrix = self.compute_feature_matrix_ext(in_signal, self.train_alpha)
-        out_signal = np.matmul(feature_matrix, self.ls_solution)
-        
-        return out_signal
+        return out_signal        
     
     
     ## Getters
