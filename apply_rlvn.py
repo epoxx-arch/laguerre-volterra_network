@@ -37,17 +37,20 @@ Fs = 25
 wrange = 1
 alpha = 0.44
 ntimes = 30
-model = RLVN(L,H,Q, Fs)
 
-print('LVN-like (H maps from filter bank to hidden layer)')
+print('Non-extended (H maps from filter bank to hidden layer)')
+extended = False
+io_link = False
+bo_link = False
+model = RLVN(L, H, Q, Fs, extended, io_link, bo_link)
+
 train_errors = []
 test_errors = []
-extended = False
 for _ in range(ntimes):
-    model.randomize_weights(weights_range = wrange, extended_weights = extended)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False, extended_weights = extended)
-    estimated_train_out = model.predict(in_signal = train_in, extended_weights = extended)
-    estimated_test_out = model.predict(in_signal = test_in, extended_weights = extended)
+    model.randomize_weights(weights_range = wrange)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False)
+    estimated_train_out = model.predict(in_signal = train_in)
+    estimated_test_out = model.predict(in_signal = test_in)
 
     nmse_train = NMSE(train_out, estimated_train_out, alpha)
     nmse_test = NMSE(test_out, estimated_test_out, alpha)
@@ -59,15 +62,19 @@ print(f'NMSE  test: {np.mean(test_errors)} {np.std(test_errors)}')
 
 
 print('Extended (HQ maps from filter bank to hidden layer)')
+extended = True
+io_link = False
+bo_link = False
+model = RLVN(L, H, Q, Fs, extended, io_link, bo_link)
+
 train_errors = []
 test_errors = []
-extended = True
 for _ in range(ntimes):
-    model.randomize_weights(weights_range = wrange, extended_weights = extended)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False, extended_weights = extended)
+    model.randomize_weights(weights_range = wrange)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False)
     
-    estimated_train_out = model.predict(in_signal = train_in, extended_weights = extended)
-    estimated_test_out =  model.predict(in_signal = test_in, extended_weights = extended)
+    estimated_train_out = model.predict(in_signal = train_in)
+    estimated_test_out =  model.predict(in_signal = test_in)
     
     nmse_train = NMSE(train_out, estimated_train_out, alpha)
     nmse_test = NMSE(test_out, estimated_test_out, alpha)
