@@ -129,13 +129,15 @@ class RLVN:
         # print('Feature matrix')
         # print(np.shape(feature_matrix))
         
-        # if self.io_link:
-            # feature_matrix = np.hstack((feature_matrix, np.array(signal).T))
+        if self.io_link:
+            feature_matrix = np.hstack(( feature_matrix, np.reshape(signal,(len(signal),1)) ))
             # print('IO link')
             # print(np.shape(feature_matrix))
-            
-        # if self.bo_link:
-            # 
+        
+        if self.bo_link:
+            feature_matrix = np.hstack(( feature_matrix, laguerre_outputs.T ))
+            # print('BO link')
+            # print(np.shape(feature_matrix))
             
         return feature_matrix
         
@@ -167,20 +169,10 @@ class RLVN:
             beta, _, rank, _ = np.linalg.lstsq( feature_matrix.T @ feature_matrix + diagonal_ridge,
                                                 feature_matrix.T @ out_signal, rcond=None)
            
-            # # Normal equation 
-            # beta, _, rank, _ = np.linalg.lstsq( feature_matrix.T.dot(feature_matrix), feature_matrix.T.dot(out_signal), rcond=None)
-            # print('ridge')
-            # print(np.shape(feature_matrix.T @ feature_matrix))
-            # print(np.linalg.matrix_rank(feature_matrix.T @ feature_matrix))
         else:
             beta, _, rank, _ = np.linalg.lstsq(feature_matrix, out_signal, rcond=None)
-            # print('unreg')
-            # print(np.shape(feature_matrix))
-            # print(np.linalg.matrix_rank(feature_matrix))
+           
         self.ls_solution = beta
-        
-        # print('sol')
-        # print(self.ls_solution)
     
         
     def predict(self, in_signal):
