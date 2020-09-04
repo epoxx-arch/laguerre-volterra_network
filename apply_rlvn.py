@@ -21,17 +21,30 @@ from optimization_utilities import NMSE
 from reservoir_laguerre_volterra_network_structure import RLVN
 # Pyython std library
 import math
+import sys
 # 3rd party
 import numpy as np
 
-# train_in, train_out = read_io('./signals_and_systems/finite_order_train.csv')
-# test_in, test_out = read_io('./signals_and_systems/finite_order_test.csv')
-train_in, train_out = read_io('./signals_and_systems/large_finite_train.csv')
-test_in, test_out = read_io('./signals_and_systems/large_finite_test.csv')
+if len(sys.argv) != 2:
+    print('Error, use as ' + sys.argv[0] + ' \'short\'|\'long\' ')
+    exit(-1)
+    
+if (sys.argv[1]).lower() == 'short':
+    train_in, train_out = read_io('./signals_and_systems/finite_order_train.csv')
+    test_in, test_out   = read_io('./signals_and_systems/finite_order_test.csv')
+elif (sys.argv[1]).lower() == 'long':
+    train_in, train_out = read_io('./signals_and_systems/large_finite_train.csv')
+    test_in, test_out   = read_io('./signals_and_systems/large_finite_test.csv')
+else:
+    print('Error, size must be \'short\' or \'long\'')
+    exit(-1)
+    
+# 
+# 
 
 
 L = 5
-H = 5
+H = 3
 Q = 4
 Fs = 25
 wrange = 1
