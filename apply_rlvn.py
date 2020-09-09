@@ -25,31 +25,42 @@ import sys
 # 3rd party
 import numpy as np
 
-if len(sys.argv) != 2:
-    print('Error, use as ' + sys.argv[0] + ' \'short\'|\'long\' ')
+if len(sys.argv) != 3:
+    print('Error, use as ' + sys.argv[0] + ' \'short\'|\'long\ \'finite\'|\'infinite\'')
     exit(-1)
     
-if (sys.argv[1]).lower() == 'short':
-    train_in, train_out = read_io('./signals_and_systems/finite_order_train.csv')
-    test_in, test_out   = read_io('./signals_and_systems/finite_order_test.csv')
-elif (sys.argv[1]).lower() == 'long':
-    train_in, train_out = read_io('./signals_and_systems/large_finite_train.csv')
-    test_in, test_out   = read_io('./signals_and_systems/large_finite_test.csv')
-else:
+size = (sys.argv[1]).lower()
+order = (sys.argv[2]).lower()
+if size != 'short' and size != 'long':
     print('Error, size must be \'short\' or \'long\'')
     exit(-1)
+if order != 'finite' and order != 'infinite':
+    print('Erro r, order must be \'finite\' or \'infinite\'')
+    exit(-1)    
     
-# 
-# 
+print(f'Size = {size}, order = {order}')
+    
+if size == 'short':
+    train_in, train_out = read_io('./signals_and_systems/' + order + '_order_train.csv')
+    test_in, test_out   = read_io('./signals_and_systems/' + order + '_order_test.csv')
+else:        # size == 'long'
+    train_in, train_out = read_io('./signals_and_systems/long_' + order + '_train.csv')
+    test_in, test_out   = read_io('./signals_and_systems/long_' + order + '_test.csv')
 
-
-L = 5
-H = 3
-Q = 4
+# Structure
+L = 2; H = 3; Q = 5
 Fs = 25
-wrange = 1
-alpha = 0.44
+# Abs range of random weights
+wrange = 0.1
+# Laguerre smoothing constant
+alpha = 0.7
+# Number of runs
 ntimes = 30
+l2_regularization = False
+if l2_regularization:
+    print('\nUSING L2 REGULARIZATION\n')
+
+print(f'(L,H,Q) = ({L},{H},{Q})')
 
 print('[WITHOUT IO_LINK / BO_LINK]')
 print('Non-extended (H maps from filter bank to hidden layer)')
@@ -62,7 +73,7 @@ train_errors = []
 test_errors = []
 for _ in range(ntimes):
     model.randomize_weights(weights_range = wrange)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     estimated_train_out = model.predict(in_signal = train_in)
     estimated_test_out = model.predict(in_signal = test_in)
 
@@ -84,7 +95,7 @@ train_errors = []
 test_errors = []
 for _ in range(ntimes):
     model.randomize_weights(weights_range = wrange)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     
     estimated_train_out = model.predict(in_signal = train_in)
     estimated_test_out =  model.predict(in_signal = test_in)
@@ -110,7 +121,7 @@ train_errors = []
 test_errors = []
 for _ in range(ntimes):
     model.randomize_weights(weights_range = wrange)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     estimated_train_out = model.predict(in_signal = train_in)
     estimated_test_out = model.predict(in_signal = test_in)
 
@@ -132,7 +143,7 @@ train_errors = []
 test_errors = []
 for _ in range(ntimes):
     model.randomize_weights(weights_range = wrange)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     
     estimated_train_out = model.predict(in_signal = train_in)
     estimated_test_out =  model.predict(in_signal = test_in)
@@ -158,7 +169,7 @@ train_errors = []
 test_errors = []
 for _ in range(ntimes):
     model.randomize_weights(weights_range = wrange)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     estimated_train_out = model.predict(in_signal = train_in)
     estimated_test_out = model.predict(in_signal = test_in)
 
@@ -180,7 +191,7 @@ train_errors = []
 test_errors = []
 for _ in range(ntimes):
     model.randomize_weights(weights_range = wrange)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     
     estimated_train_out = model.predict(in_signal = train_in)
     estimated_test_out =  model.predict(in_signal = test_in)
@@ -206,7 +217,7 @@ train_errors = []
 test_errors = []
 for _ in range(ntimes):
     model.randomize_weights(weights_range = wrange)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     estimated_train_out = model.predict(in_signal = train_in)
     estimated_test_out = model.predict(in_signal = test_in)
 
@@ -228,7 +239,7 @@ train_errors = []
 test_errors = []
 for _ in range(ntimes):
     model.randomize_weights(weights_range = wrange)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = False)
+    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     
     estimated_train_out = model.predict(in_signal = train_in)
     estimated_test_out =  model.predict(in_signal = test_in)
