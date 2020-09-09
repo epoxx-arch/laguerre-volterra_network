@@ -163,15 +163,14 @@ class RLVN:
         self.train_alpha = alpha
         
         if l2_regularization:
-            lamb = 1
+            lamb = 1e3
             diagonal_ridge = lamb*np.identity(feature_matrix.shape[1])
-            diagonal_ridge[0,0] = 1
-            beta, _, rank, _ = np.linalg.lstsq( feature_matrix.T @ feature_matrix + diagonal_ridge,
-                                                feature_matrix.T @ out_signal, rcond=None)
-           
+            diagonal_ridge[0,0] = 0           
+            beta, _, rank, _ = np.linalg.lstsq(feature_matrix.T @ feature_matrix,
+                                               feature_matrix.T @ out_signal, rcond=None)
         else:
             beta, _, rank, _ = np.linalg.lstsq(feature_matrix, out_signal, rcond=None)
-           
+       
         self.ls_solution = beta
     
         
