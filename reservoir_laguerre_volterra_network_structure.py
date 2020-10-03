@@ -23,7 +23,7 @@ class RLVN:
     ''' Reservoir Laguerre-Volterra network '''
     
     def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval, extended_weights, io_link, bo_link):
-        ''' Constructor. '''
+        ''' Constructor '''
         
         # Sanity check
         if any([ (not(isinstance(param,int)) or param <= 0) for param in [laguerre_order, num_hidden_units, polynomial_order, sampling_interval]]):
@@ -80,7 +80,7 @@ class RLVN:
         return bank_outputs
     
     
-    def randomize_weights(self, weights_range):
+    def randomize_weights(self, weights_range, seed):
         ''' Random weights are (L, H) or (L, HQ) depending upon extended_weights boolean, in |rand| < |weights_range|. '''
         # Sanity check
         if isinstance(weights_range, Iterable):
@@ -89,57 +89,65 @@ class RLVN:
         if weights_range == 0:
             print('Error range must be nonzero')
             exit(-1)
-
+        
+        # Reset seed if necessary (it is always 'de-reseted' in the end of the method)
+        if seed != None:
+            np.random.seed(seed)
+        
         # Randomize weights
-        if self.extended_weights:    # W = (L, HQ)
+        if self.extended_weights:   # W = (L, HQ)
             self.random_weights = (np.random.rand(self.L, self.H * self.Q) * 2 * weights_range) - weights_range
-        else:                   # W = (L, H)
+        else:                       # W = (L, H)
             self.random_weights = (np.random.rand(self.L, self.H) * 2 * weights_range) - weights_range
+    
+        np.random.seed()
         
         
-    def compute_feature_matrix(self, signal, alpha):
-        ''' Given an in-signal, linearly computes hidden units inputs and then compute the separated "coefficientless" polynomial outputs.'''
+    def compute_enhanced_input(self, signal, alpha):
+        ''' Given an input signal, linearly computes hidden units inputs and then compute the polynomial outputs.'''
         
         if not isinstance(self.random_weights, Iterable):
             print('Error, randomize weights before computing the feature matrix for some signal.')
             exit(-1)
-         
+        
         # Propagation through Laguerre filter bank returns an (L,N) matrix
         N = len(signal)
         laguerre_outputs = self.propagate_laguerre_filterbank(signal, alpha)
         
         # The input of each hidden node at some moment is the dot product between a random vector and the outputs of the Laguerre bank
-        # Hidden nodes input matrix is (N,H)
+        # Hidden nodes input matrix may be (N,H) or (N, HQ), dependeing uppn self.extended_weights 
         hidden_nodes_in = laguerre_outputs.T @ self.random_weights
         
         # The feature matrix is (N, HQ+1), containing polynomial maps for each hidden node without coefficients
-        feature_matrix = np.ones((N, self.H * self.Q + 1))
+        enhanced_input = np.ones((N, self.H * (self.Q - 1) + 1))
         
         # When weights are extended, every polynomial term has a different random projection as input (HQ projections)
         # Else, the same random projection is shared inside each polynomial function of order Q (H projections)
         if self.extended_weights:
             # W = (L, HQ)
-            for q in range(1, self.Q + 1):
-                feature_matrix[:, 1  + (q - 1) * self.H : 1 + q * self.H] = np.power(hidden_nodes_in[:,(q - 1) * self.H : q * self.H], q)
+            for q in range(2, self.Q + 1):
+                enhanced_input[:, 1  + (q - 2) * self.H : 1 + (q - 1) * self.H] = np.power(hidden_nodes_in[:,(q - 2) * self.H : (q - 1) * self.H], q)
         else:                       
             # W = (L, H)
-            for q in range(1, self.Q + 1):
-                feature_matrix[:, 1  + (q - 1) * self.H : 1 + q * self.H] = np.power(hidden_nodes_in, q)
-        
+            for q in range(2, self.Q + 1):
+                enhanced_input[:, 1  + (q - 2) * self.H : 1 + (q - 1) * self.H] = np.power(hidden_nodes_in, q)
+                
+                
         # print('Feature matrix')
-        # print(np.shape(feature_matrix))
+        # print(np.shape(enhanced_input))
         
         if self.io_link:
-            feature_matrix = np.hstack(( feature_matrix, np.reshape(signal,(len(signal),1)) ))
+            enhanced_input = np.hstack(( enhanced_input, np.reshape(signal,(len(signal),1)) ))
             # print('IO link')
-            # print(np.shape(feature_matrix))
+            # print(np.shape(enhanced_input))
         
+        # BANK-OUTPUT LINK DOES NOT IMPROVE PERFORMANCE
         if self.bo_link:
-            feature_matrix = np.hstack(( feature_matrix, laguerre_outputs.T ))
+            enhanced_input = np.hstack(( enhanced_input, laguerre_outputs.T ))
             # print('BO link')
-            # print(np.shape(feature_matrix))
+            # print(np.shape(enhanced_input))
             
-        return feature_matrix
+        return enhanced_input
         
         
     def train(self, in_signal, out_signal, alpha, l2_regularization):
@@ -158,18 +166,23 @@ class RLVN:
             exit(-1)
             
         # Compute nonlinear feature matrix with the randomized weights
-        feature_matrix = self.compute_feature_matrix(signal=in_signal, alpha=alpha)
+        enhanced_input = self.compute_enhanced_input(signal=in_signal, alpha=alpha)
+        rank = np.linalg.matrix_rank(enhanced_input)
+        #print(f'Cols = {np.shape(enhanced_input[1])}, rank = {rank}')
         # Keep alpha used to train the model (only after the function calls that verify alpha values)
         self.train_alpha = alpha
         
         if l2_regularization:
-            lamb = 1e3
-            diagonal_ridge = lamb*np.identity(feature_matrix.shape[1])
+            lamb = 1e-1
+            diagonal_ridge = lamb*np.identity(enhanced_input.shape[1])
             diagonal_ridge[0,0] = 0           
-            beta, _, rank, _ = np.linalg.lstsq(feature_matrix.T @ feature_matrix,
-                                               feature_matrix.T @ out_signal, rcond=None)
+            beta, _, _, _ = np.linalg.lstsq(enhanced_input.T @ enhanced_input + diagonal_ridge,
+                                               enhanced_input.T @ out_signal, rcond=None)
+                                               
+            #beta, _, rank, _ = np.linalg.lstsq(enhanced_input, out_signal, rcond=None)
         else:
-            beta, _, rank, _ = np.linalg.lstsq(feature_matrix, out_signal, rcond=None)
+            #beta = np.linalg.pinv(enhanced_input.T @  ) @ out_signal
+            beta, _, _, _ = np.linalg.lstsq(enhanced_input, out_signal, rcond=None)
        
         self.ls_solution = beta
     
@@ -185,8 +198,8 @@ class RLVN:
             print('Error, input signal must be an iterable object')
             exit(-1)
             
-        feature_matrix = self.compute_feature_matrix(signal=in_signal, alpha=self.train_alpha)
-        out_signal = feature_matrix @ self.ls_solution
+        enhanced_input = self.compute_enhanced_input(signal=in_signal, alpha=self.train_alpha)
+        out_signal = enhanced_input @ self.ls_solution
         
         return out_signal        
     

@@ -125,7 +125,7 @@ for _ in range(ntimes):
     ifbt_test_errors.append(nmse_test)
     
     # With io / bo links
-    io_link = True
+    io_link = True  
     bo_link = True
     # Train model and predict outputs
     model = RLVN(L, H, Q, Fs, extended, io_link, bo_link)
@@ -138,6 +138,8 @@ for _ in range(ntimes):
     nmse_test = NMSE(test_out, estimated_test_out, alpha)
     itbt_train_errors.append(nmse_train)
     itbt_test_errors.append(nmse_test)
+    
+    
 
 print('Train')
 print(f'NMSE without io/bo:      {np.mean(ifbf_train_errors)} ({np.std(ifbf_train_errors)})')
@@ -225,6 +227,7 @@ for _ in range(ntimes):
     nmse_test = NMSE(test_out, estimated_test_out, alpha)
     itbt_train_errors.append(nmse_train)
     itbt_test_errors.append(nmse_test)
+    
 
 print('Train')
 print(f'NMSE without io/bo:      {np.mean(ifbf_train_errors)} ({np.std(ifbf_train_errors)})')
