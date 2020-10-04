@@ -57,7 +57,7 @@ wrange = 0.1
 alpha = 0.7
 # Number of runs
 ntimes = 100
-l2_regularization = False # todo : regularization as a parameter of the script
+l2_regularization = False
 if l2_regularization:
     print('\nUSING L2 REGULARIZATION\n')
 
@@ -66,54 +66,21 @@ print(f'(L,H,Q) = ({L},{H},{Q})')
 # RLVN with H maps from filter bank to hidden layer (same as original LVN)
 print('Non-extended (H maps from filter bank to hidden layer)')
 extended = False
-# 2 boolean options: input-output direct e bank-output
-ifbf_test_errors = []
-itbf_test_errors = []
-ifbt_test_errors = []
-itbt_test_errors = []
-ifbf_train_errors = []
-itbf_train_errors = []
-ifbt_train_errors = []
-itbt_train_errors = []
+
+# Keep results with or without input-output direct link
+iof_train_errors = []
+iot_train_errors = []
+iof_test_errors = []
+iot_test_errors = []
+
 for _ in range(ntimes):
     # All models use the same seed in a run
     seed = np.random.randint(1000)
     
-    # Without io / bo links
-    io_link = False
-    bo_link = False
-    # Train model and predict outputs
-    model = RLVN(L, H, Q, Fs, extended, io_link, bo_link)
-    model.randomize_weights(weights_range = wrange, seed = seed)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
-    estimated_train_out = model.predict(in_signal = train_in)
-    estimated_test_out = model.predict(in_signal = test_in)
-    # Comput and keep errors
-    nmse_train = NMSE(train_out, estimated_train_out, alpha)
-    nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    ifbf_train_errors.append(nmse_train)
-    ifbf_test_errors.append(nmse_test)
-    
-    # With io / without bo links
-    io_link = True
-    bo_link = False
-    # Train model and predict outputs
-    model = RLVN(L, H, Q, Fs, extended, io_link, bo_link)
-    model.randomize_weights(weights_range = wrange, seed = seed)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
-    estimated_train_out = model.predict(in_signal = train_in)
-    estimated_test_out = model.predict(in_signal = test_in)
-    # Comput and keep errors
-    nmse_train = NMSE(train_out, estimated_train_out, alpha)
-    nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    itbf_train_errors.append(nmse_train)
-    itbf_test_errors.append(nmse_test)
-    
     # Without io / with bo links
     io_link = False
-    bo_link = True
     # Train model and predict outputs
-    model = RLVN(L, H, Q, Fs, extended, io_link, bo_link)
+    model = RLVN(L, H, Q, Fs, extended, io_link)
     model.randomize_weights(weights_range = wrange, seed = seed)
     model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     estimated_train_out = model.predict(in_signal = train_in)
@@ -121,14 +88,13 @@ for _ in range(ntimes):
     # Comput and keep errors
     nmse_train = NMSE(train_out, estimated_train_out, alpha)
     nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    ifbt_train_errors.append(nmse_train)
-    ifbt_test_errors.append(nmse_test)
+    iof_train_errors.append(nmse_train)
+    iof_test_errors.append(nmse_test)
     
     # With io / bo links
     io_link = True  
-    bo_link = True
     # Train model and predict outputs
-    model = RLVN(L, H, Q, Fs, extended, io_link, bo_link)
+    model = RLVN(L, H, Q, Fs, extended, io_link)
     model.randomize_weights(weights_range = wrange, seed = seed)
     model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     estimated_train_out = model.predict(in_signal = train_in)
@@ -136,73 +102,35 @@ for _ in range(ntimes):
     # Comput and keep errors
     nmse_train = NMSE(train_out, estimated_train_out, alpha)
     nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    itbt_train_errors.append(nmse_train)
-    itbt_test_errors.append(nmse_test)
+    iot_train_errors.append(nmse_train)
+    iot_test_errors.append(nmse_test)
     
-    
-
 print('Train')
-print(f'NMSE without io/bo:      {np.mean(ifbf_train_errors)} ({np.std(ifbf_train_errors)})')
-print(f'NMSE with io/without bo: {np.mean(itbf_train_errors)} ({np.std(itbf_train_errors)})')
-print(f'NMSE without io/with bo: {np.mean(ifbt_train_errors)} ({np.std(ifbt_train_errors)})')
-print(f'NMSE with io/bo:         {np.mean(itbt_train_errors)} ({np.std(itbt_train_errors)})')
+print(f'NMSE without io/with bo: {np.mean(iof_train_errors)} ({np.std(iof_train_errors)})')
+print(f'NMSE with io/bo:         {np.mean(iot_train_errors)} ({np.std(iot_train_errors)})')
 print('Test')
-print(f'NMSE without io/bo:      {np.mean(ifbf_test_errors)} ({np.std(ifbf_test_errors)})')
-print(f'NMSE with io/without bo: {np.mean(itbf_test_errors)} ({np.std(itbf_test_errors)})')
-print(f'NMSE without io/with bo: {np.mean(ifbt_test_errors)} ({np.std(ifbt_test_errors)})')
-print(f'NMSE with io/bo:         {np.mean(itbt_test_errors)} ({np.std(itbt_test_errors)})')
+print(f'NMSE without io/with bo: {np.mean(iof_test_errors)} ({np.std(iof_test_errors)})')
+print(f'NMSE with io/bo:         {np.mean(iot_test_errors)} ({np.std(iot_test_errors)})')
 
+
+## EXTENDED RLVN
 # RLVN with HQ maps from bank to hidden layer, using multidimensional polynomials as units
 print('\nExtended RLVN (HQ maps from filter bank to hidden layer)')
 extended = False
+
 # 2 boolean options: input-output direct e bank-output
-ifbf_test_errors = []
-itbf_test_errors = []
-ifbt_test_errors = []
-itbt_test_errors = []
-ifbf_train_errors = []
-itbf_train_errors = []
-ifbt_train_errors = []
-itbt_train_errors = []
+iof_train_errors = []
+iot_train_errors = []
+iof_test_errors = []
+iot_test_errors = []
 for _ in range(ntimes):
     # All models use the same seed in a run
     seed = np.random.randint(1000)
     
-    # Without io / bo links
-    io_link = False
-    bo_link = False
-    # Train model and predict outputs
-    model = RLVN(L, H, Q, Fs, extended, io_link, bo_link)
-    model.randomize_weights(weights_range = wrange, seed = seed)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
-    estimated_train_out = model.predict(in_signal = train_in)
-    estimated_test_out = model.predict(in_signal = test_in)
-    # Comput and keep errors
-    nmse_train = NMSE(train_out, estimated_train_out, alpha)
-    nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    ifbf_train_errors.append(nmse_train)
-    ifbf_test_errors.append(nmse_test)
-    
-    # With io / without bo links
-    io_link = True
-    bo_link = False
-    # Train model and predict outputs
-    model = RLVN(L, H, Q, Fs, extended, io_link, bo_link)
-    model.randomize_weights(weights_range = wrange, seed = seed)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
-    estimated_train_out = model.predict(in_signal = train_in)
-    estimated_test_out = model.predict(in_signal = test_in)
-    # Comput and keep errors
-    nmse_train = NMSE(train_out, estimated_train_out, alpha)
-    nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    itbf_train_errors.append(nmse_train)
-    itbf_test_errors.append(nmse_test)
-    
     # Without io / with bo links
     io_link = False
-    bo_link = True
     # Train model and predict outputs
-    model = RLVN(L, H, Q, Fs, extended, io_link, bo_link)
+    model = RLVN(L, H, Q, Fs, extended, io_link)
     model.randomize_weights(weights_range = wrange, seed = seed)
     model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     estimated_train_out = model.predict(in_signal = train_in)
@@ -210,14 +138,13 @@ for _ in range(ntimes):
     # Comput and keep errors
     nmse_train = NMSE(train_out, estimated_train_out, alpha)
     nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    ifbt_train_errors.append(nmse_train)
-    ifbt_test_errors.append(nmse_test)
+    iof_train_errors.append(nmse_train)
+    iof_test_errors.append(nmse_test)
     
     # With io / bo links
     io_link = True
-    bo_link = True
     # Train model and predict outputs
-    model = RLVN(L, H, Q, Fs, extended, io_link, bo_link)
+    model = RLVN(L, H, Q, Fs, extended, io_link)
     model.randomize_weights(weights_range = wrange, seed = seed)
     model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     estimated_train_out = model.predict(in_signal = train_in)
@@ -225,17 +152,12 @@ for _ in range(ntimes):
     # Comput and keep errors
     nmse_train = NMSE(train_out, estimated_train_out, alpha)
     nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    itbt_train_errors.append(nmse_train)
-    itbt_test_errors.append(nmse_test)
-    
+    iot_train_errors.append(nmse_train)
+    iot_test_errors.append(nmse_test)
 
 print('Train')
-print(f'NMSE without io/bo:      {np.mean(ifbf_train_errors)} ({np.std(ifbf_train_errors)})')
-print(f'NMSE with io/without bo: {np.mean(itbf_train_errors)} ({np.std(itbf_train_errors)})')
-print(f'NMSE without io/with bo: {np.mean(ifbt_train_errors)} ({np.std(ifbt_train_errors)})')
-print(f'NMSE with io/bo:         {np.mean(itbt_train_errors)} ({np.std(itbt_train_errors)})')
+print(f'NMSE without io/with bo: {np.mean(iof_train_errors)} ({np.std(iof_train_errors)})')
+print(f'NMSE with io/bo:         {np.mean(iot_train_errors)} ({np.std(iot_train_errors)})')
 print('Test')
-print(f'NMSE without io/bo:      {np.mean(ifbf_test_errors)} ({np.std(ifbf_test_errors)})')
-print(f'NMSE with io/without bo: {np.mean(itbf_test_errors)} ({np.std(itbf_test_errors)})')
-print(f'NMSE without io/with bo: {np.mean(ifbt_test_errors)} ({np.std(ifbt_test_errors)})')
-print(f'NMSE with io/bo:         {np.mean(itbt_test_errors)} ({np.std(itbt_test_errors)})')
+print(f'NMSE without io/with bo: {np.mean(iof_test_errors)} ({np.std(iof_test_errors)})')
+print(f'NMSE with io/bo:         {np.mean(iot_test_errors)} ({np.std(iot_test_errors)})')

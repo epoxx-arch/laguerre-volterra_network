@@ -22,15 +22,15 @@ from collections.abc import Iterable
 class RLVN:
     ''' Reservoir Laguerre-Volterra network '''
     
-    def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval, extended_weights, io_link, bo_link):
+    def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval, extended_weights, io_link):
         ''' Constructor '''
         
         # Sanity check
         if any([ (not(isinstance(param,int)) or param <= 0) for param in [laguerre_order, num_hidden_units, polynomial_order, sampling_interval]]):
             print('Error, structural parameters (L, H, Q and Fs) must be positive integers.')
             exit(-1)
-        if any([ not isinstance(param,bool) for param in [extended_weights, io_link, bo_link]]):
-            print('Flags (extended_weights, io_link and bo_link) must be booleans.')
+        if any([ not isinstance(param,bool) for param in [extended_weights, io_link]]):
+            print('Flags (extended_weight and io_link) must be booleans.')
             exit(-1)
             
         # Structural parameters
@@ -41,7 +41,6 @@ class RLVN:
         
         # Flags
         self.io_link = io_link
-        self.bo_link = bo_link
         self.extended_weights = extended_weights
         
         # Random weights matrix
@@ -107,7 +106,7 @@ class RLVN:
         ''' Given an input signal, linearly computes hidden units inputs and then compute the polynomial outputs.'''
         
         if not isinstance(self.random_weights, Iterable):
-            print('Error, randomize weights before computing the feature matrix for some signal.')
+            print('Error, randomize weights before computing the enhanced input matrix for some signal.')
             exit(-1)
         
         # Propagation through Laguerre filter bank returns an (L,N) matrix
@@ -118,7 +117,8 @@ class RLVN:
         # Hidden nodes input matrix may be (N,H) or (N, HQ), dependeing uppn self.extended_weights 
         hidden_nodes_in = laguerre_outputs.T @ self.random_weights
         
-        # The feature matrix is (N, HQ+1), containing polynomial maps for each hidden node without coefficients
+        # The enhanced input matrix is (N, H * (Q - 1) +1), containing polynomial maps for each hidden node without coefficients
+        # The polynomials do not use linear terms, since those would probably be linearly dependent
         enhanced_input = np.ones((N, self.H * (self.Q - 1) + 1))
         
         # When weights are extended, every polynomial term has a different random projection as input (HQ projections)
@@ -132,26 +132,18 @@ class RLVN:
             for q in range(2, self.Q + 1):
                 enhanced_input[:, 1  + (q - 2) * self.H : 1 + (q - 1) * self.H] = np.power(hidden_nodes_in, q)
                 
-                
-        # print('Feature matrix')
-        # print(np.shape(enhanced_input))
-        
         if self.io_link:
             enhanced_input = np.hstack(( enhanced_input, np.reshape(signal,(len(signal),1)) ))
-            # print('IO link')
-            # print(np.shape(enhanced_input))
-        
-        # BANK-OUTPUT LINK DOES NOT IMPROVE PERFORMANCE
-        if self.bo_link:
-            enhanced_input = np.hstack(( enhanced_input, laguerre_outputs.T ))
-            # print('BO link')
-            # print(np.shape(enhanced_input))
+            
+        # Instead of using hidde nodes inputs (projected random vectors) as linear terms,
+        # we use the outputs of the Laguerre filterbank.
+        enhanced_input = np.hstack(( enhanced_input, laguerre_outputs.T ))
             
         return enhanced_input
         
         
     def train(self, in_signal, out_signal, alpha, l2_regularization):
-        ''' Computes nonlinear random feature matrix from input signal and estimates a linear map to the output signal.
+        ''' Computes enhanced input matrix from input signal and estimates a linear map to the output signal.
             It is possible to consider L2-regularization, performing Ridge regression. '''
         
         # Sanity checks
@@ -165,10 +157,15 @@ class RLVN:
             print('Error, L2 regularization must be a boolean.')
             exit(-1)
             
-        # Compute nonlinear feature matrix with the randomized weights
+        # Compute enhanced input matrix with the randomized weights
         enhanced_input = self.compute_enhanced_input(signal=in_signal, alpha=alpha)
+        
+        # Verify rank of the enhanced input matrix 
         rank = np.linalg.matrix_rank(enhanced_input)
+        if rank != np.shape(enhanced_input[1]):
+            print('RANK DEFICIENCY')
         #print(f'Cols = {np.shape(enhanced_input[1])}, rank = {rank}')
+        
         # Keep alpha used to train the model (only after the function calls that verify alpha values)
         self.train_alpha = alpha
         
