@@ -49,10 +49,10 @@ else:        # size == 'long'
 
 ## Configs
 # Structure
-L = 5; H = 3; Q = 4
+L = 2; H = 3; Q = 5
 Fs = 25
 # Abs range of random weights
-wrange = 0.1
+wrange = 0.5
 # Laguerre smoothing constant
 alpha = 0.7
 # Number of runs
@@ -64,25 +64,21 @@ if l2_regularization:
 print(f'(L,H,Q) = ({L},{H},{Q})')
 
 # Non-extended RLVN without IO link
-extended = False
+extended = True
 io_link = False
 
 # Keep results with or without input-output direct link
-uni_train_errors = []
-norm_train_errors = []
-gau_train_errors = []
-uni_test_errors = []
-norm_test_errors = []
-gau_test_errors = []
+nobias_train_errors = []
+bias_train_errors = []
+nobias_test_errors = []
+bias_test_errors = []
 
 for _ in range(ntimes):
-    # All models use the same seed in a run
-    #seed = np.random.randint(1000)
     seed = None
     
-    ## UNIFORM RANDOM CONTINUOUS WEIGHTS
+    ## NO BIAS
     # Train model and predict outputs
-    model = RLVN(L, H, Q, Fs, extended, io_link)
+    model = RLVN(L, H, Q, Fs, extended, io_link, False)
     model.randomize_weights(weights_range = wrange, seed = seed)
     model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     estimated_train_out = model.predict(in_signal = train_in)
@@ -90,40 +86,25 @@ for _ in range(ntimes):
     # Comput and keep errors
     nmse_train = NMSE(train_out, estimated_train_out, alpha)
     nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    uni_train_errors.append(nmse_train)
-    uni_test_errors.append(nmse_test)
+    nobias_train_errors.append(nmse_train)
+    nobias_test_errors.append(nmse_test)
     
-    ## NORMALIZED UNIFORM RANDOM BINARY WEIGHTS
+    ## BIAS
     # Train model and predict outputs
-    model = RLVN(L, H, Q, Fs, extended, io_link)
-    model.randomize_weights_norm(weights_range = wrange, seed = seed)
+    model = RLVN(L, H, Q, Fs, extended, io_link, True)
+    model.randomize_weights(weights_range = wrange, seed = seed)
     model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
     estimated_train_out = model.predict(in_signal = train_in)
     estimated_test_out = model.predict(in_signal = test_in)
     # Comput and keep errors
     nmse_train = NMSE(train_out, estimated_train_out, alpha)
     nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    norm_train_errors.append(nmse_train)
-    norm_test_errors.append(nmse_test)
-    
-    ## STANDARD GAUSSIAN WEIGHTS
-    # Train model and predict outputs
-    model = RLVN(L, H, Q, Fs, extended, io_link)
-    model.randomize_weights_gau(seed)
-    model.train(in_signal = train_in, out_signal = train_out, alpha = alpha, l2_regularization = l2_regularization)
-    estimated_train_out = model.predict(in_signal = train_in)
-    estimated_test_out = model.predict(in_signal = test_in)
-    # Comput and keep errors
-    nmse_train = NMSE(train_out, estimated_train_out, alpha)
-    nmse_test = NMSE(test_out, estimated_test_out, alpha)
-    gau_train_errors.append(nmse_train)
-    gau_test_errors.append(nmse_test)
+    bias_train_errors.append(nmse_train)
+    bias_test_errors.append(nmse_test)
 
 print('Train')
-print(f'NMSE uni: {np.mean(uni_train_errors)} ({np.std(uni_train_errors)})')
-print(f'NMSE norm: {np.mean(norm_train_errors)} ({np.std(norm_train_errors)})')
-print(f'NMSE gau: {np.mean(gau_train_errors)} ({np.std(gau_train_errors)})')
+print(f'NMSE no bias: {np.mean(nobias_train_errors)} ({np.std(nobias_train_errors)})')
+print(f'NMSE bias:    {np.mean(bias_train_errors)} ({np.std(bias_train_errors)})')
 print('Test')
-print(f'NMSE uni: {np.mean(uni_test_errors)} ({np.std(uni_test_errors)})')
-print(f'NMSE norm: {np.mean(norm_test_errors)} ({np.std(norm_test_errors)})')
-print(f'NMSE gau: {np.mean(gau_test_errors)} ({np.std(gau_test_errors)})')
+print(f'NMSE no bias: {np.mean(nobias_test_errors)} ({np.std(nobias_test_errors)})')
+print(f'NMSE bias:    {np.mean(bias_test_errors)} ({np.std(bias_test_errors)})')

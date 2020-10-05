@@ -22,7 +22,7 @@ from collections.abc import Iterable
 class RLVN:
     ''' Reservoir Laguerre-Volterra network '''
     
-    def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval, extended_weights, io_link):
+    def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval, extended_weights, io_link, use_bias):
         ''' Constructor '''
         
         # Sanity check
@@ -31,6 +31,9 @@ class RLVN:
             exit(-1)
         if any([ not isinstance(param,bool) for param in [extended_weights, io_link]]):
             print('Flags (extended_weight and io_link) must be booleans.')
+            exit(-1)
+        if not isinstance(use_bias, bool):
+            print('use_bias must be a boolean')
             exit(-1)
             
         # Structural parameters
@@ -42,6 +45,7 @@ class RLVN:
         # Flags
         self.io_link = io_link
         self.extended_weights = extended_weights
+        self.use_bias = use_bias
         
         # Random weights matrix
         self.random_weights = None
@@ -90,72 +94,21 @@ class RLVN:
             exit(-1)
         
         # Reset seed if necessary (it is always 'de-reseted' in the end of the method)
-        if seed != None:
-            np.random.seed(seed)
+        # If seed is None, this has no effect
+        np.random.seed(seed)
+        
+        # With bias terms in the hidden node inputs, there is an extra weight for each node
+        if self.use_bias:
+            vec_cardinality = self.L + 1
+        else:  
+            vec_cardinality = self.L
         
         # Randomize weights
-        if self.extended_weights:   # W = (L, HQ)
-            self.random_weights = (np.random.rand(self.L, self.H * self.Q) * 2 * weights_range) - weights_range
-        else:                       # W = (L, H)
-            self.random_weights = (np.random.rand(self.L, self.H) * 2 * weights_range) - weights_range
+        if self.extended_weights:   # W = (cardinality, HQ)
+            self.random_weights = (np.random.rand(vec_cardinality, self.H * self.Q)  * 2 * weights_range) - weights_range
+        else:                       # W = (cardinality, H)
+            self.random_weights = (np.random.rand(vec_cardinality, self.H)           * 2 * weights_range) - weights_range
             
-        np.random.seed()
-        
-    def randomize_weights_norm(self, weights_range, seed):
-        ''' Random weights are (L, H) or (L, HQ) depending upon extended_weights boolean, in |rand| < |weights_range|. '''
-        # Sanity check
-        if isinstance(weights_range, Iterable):
-            print('Error, range must be a scalar')
-            exit(-1)
-        if weights_range == 0:
-            print('Error range must be nonzero')
-            exit(-1)
-        
-        # Reset seed if necessary (it is always 'de-reseted' in the end of the method)
-        if seed != None:
-            np.random.seed(seed)
-        
-        # Randomize weights
-        if self.extended_weights:   # W = (L, HQ)
-            self.random_weights = (np.random.rand(self.L, self.H * self.Q) * 2 * weights_range) - weights_range
-        else:                       # W = (L, H)
-            self.random_weights = (np.random.rand(self.L, self.H) * 2 * weights_range) - weights_range
-            
-        for col in range(np.shape(self.random_weights)[1]):
-            self.random_weights[:, col] /= np.sqrt(np.sum(self.random_weights[:, col] ** 2))
-            
-        np.random.seed()
-        
-        
-    def randomize_weights_bin(self, seed):
-        # Reset seed if necessary (it is always 'de-reseted' in the end of the method)
-        if seed != None:
-            np.random.seed(seed)
-        
-        # Randomize weights
-        if self.extended_weights:   # W = (L, HQ)
-            base = -1 * np.ones((self.L, self.H * self.Q))                                          # Matrix of -1
-            random_exponents = np.random.randint(low=1, high=3, size=(self.L, self.H * self.Q))     # Matrix of random int numbers (1 or 2)
-            self.random_weights = np.power(base, random_exponents)
-        else:                       # W = (L, H)
-            self.random_weights = np.random.rand(self.L, self.H)
-            base = -1 * np.ones((self.L, self.H))                                           # Matrix of -1
-            random_exponents = np.random.randint(low=1, high=3, size=(self.L, self.H))      # Matrix of random int numbers (1 or 2)
-            self.random_weights = np.power(base, random_exponents)
-
-        np.random.seed()
-    
-    def randomize_weights_gau(self, seed):
-        # Reset seed if necessary (it is always 'de-reseted' in the end of the method)
-        if seed != None:
-            np.random.seed(seed)
-            
-        # Randomize weights
-        if self.extended_weights:   # W = (L, HQ)
-            self.random_weights = np.random.normal(loc = 0, scale = 0.1, size=(self.L, self.H * self.Q))
-        else:                       # W = (L, H)
-            self.random_weights = np.random.normal(loc = 0, scale = 0.1, size=(self.L, self.H))
-        
         np.random.seed()
     
         
@@ -172,7 +125,11 @@ class RLVN:
         
         # The input of each hidden node at some moment is the dot product between a random vector and the outputs of the Laguerre bank
         # Hidden nodes input matrix may be (N,H) or (N, HQ), dependeing uppn self.extended_weights 
-        hidden_nodes_in = laguerre_outputs.T @ self.random_weights
+        if not self.use_bias:
+            hidden_nodes_in = laguerre_outputs.T @ self.random_weights 
+        # With a bias terms in the hidden node inputs, we must augment the laguerre ouputs matrix
+        else:
+            hidden_nodes_in = np.vstack(( np.ones(N), laguerre_outputs)).T @ self.random_weights
         
         # The enhanced input matrix is (N, H * (Q - 1) +1), containing polynomial maps for each hidden node without coefficients
         # The polynomials do not use linear terms, since those would probably be linearly dependent
