@@ -34,10 +34,10 @@ class RLVN:
             exit(-1)
             
         # Structural parameters
-        self.L = laguerre_order         # laguerre_order
-        self.H = num_hidden_units       # num_hidden_units
-        self.Q = polynomial_order       # polynomial_order
-        self.T = sampling_interval      # sampling_interval
+        self.L = laguerre_order         # laguerre order
+        self.H = num_hidden_units       # number of hidden units
+        self.Q = polynomial_order       # polynomial order
+        self.T = sampling_interval      # sampling interval
         
         # Flags
         self.io_link = io_link
@@ -98,9 +98,66 @@ class RLVN:
             self.random_weights = (np.random.rand(self.L, self.H * self.Q) * 2 * weights_range) - weights_range
         else:                       # W = (L, H)
             self.random_weights = (np.random.rand(self.L, self.H) * 2 * weights_range) - weights_range
-    
+            
         np.random.seed()
         
+    def randomize_weights_norm(self, weights_range, seed):
+        ''' Random weights are (L, H) or (L, HQ) depending upon extended_weights boolean, in |rand| < |weights_range|. '''
+        # Sanity check
+        if isinstance(weights_range, Iterable):
+            print('Error, range must be a scalar')
+            exit(-1)
+        if weights_range == 0:
+            print('Error range must be nonzero')
+            exit(-1)
+        
+        # Reset seed if necessary (it is always 'de-reseted' in the end of the method)
+        if seed != None:
+            np.random.seed(seed)
+        
+        # Randomize weights
+        if self.extended_weights:   # W = (L, HQ)
+            self.random_weights = (np.random.rand(self.L, self.H * self.Q) * 2 * weights_range) - weights_range
+        else:                       # W = (L, H)
+            self.random_weights = (np.random.rand(self.L, self.H) * 2 * weights_range) - weights_range
+            
+        for col in range(np.shape(self.random_weights)[1]):
+            self.random_weights[:, col] /= np.sqrt(np.sum(self.random_weights[:, col] ** 2))
+            
+        np.random.seed()
+        
+        
+    def randomize_weights_bin(self, seed):
+        # Reset seed if necessary (it is always 'de-reseted' in the end of the method)
+        if seed != None:
+            np.random.seed(seed)
+        
+        # Randomize weights
+        if self.extended_weights:   # W = (L, HQ)
+            base = -1 * np.ones((self.L, self.H * self.Q))                                          # Matrix of -1
+            random_exponents = np.random.randint(low=1, high=3, size=(self.L, self.H * self.Q))     # Matrix of random int numbers (1 or 2)
+            self.random_weights = np.power(base, random_exponents)
+        else:                       # W = (L, H)
+            self.random_weights = np.random.rand(self.L, self.H)
+            base = -1 * np.ones((self.L, self.H))                                           # Matrix of -1
+            random_exponents = np.random.randint(low=1, high=3, size=(self.L, self.H))      # Matrix of random int numbers (1 or 2)
+            self.random_weights = np.power(base, random_exponents)
+
+        np.random.seed()
+    
+    def randomize_weights_gau(self, seed):
+        # Reset seed if necessary (it is always 'de-reseted' in the end of the method)
+        if seed != None:
+            np.random.seed(seed)
+            
+        # Randomize weights
+        if self.extended_weights:   # W = (L, HQ)
+            self.random_weights = np.random.normal(loc = 0, scale = 0.1, size=(self.L, self.H * self.Q))
+        else:                       # W = (L, H)
+            self.random_weights = np.random.normal(loc = 0, scale = 0.1, size=(self.L, self.H))
+        
+        np.random.seed()
+    
         
     def compute_enhanced_input(self, signal, alpha):
         ''' Given an input signal, linearly computes hidden units inputs and then compute the polynomial outputs.'''
