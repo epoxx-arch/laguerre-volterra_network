@@ -22,18 +22,15 @@ from collections.abc import Iterable
 class RLVN:
     ''' Reservoir Laguerre-Volterra network '''
     
-    def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval, extended_weights, io_link, use_bias):
+    def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval, io_link):
         ''' Constructor '''
         
         # Sanity check
         if any([ (not(isinstance(param,int)) or param <= 0) for param in [laguerre_order, num_hidden_units, polynomial_order, sampling_interval]]):
             print('Error, structural parameters (L, H, Q and Fs) must be positive integers.')
             exit(-1)
-        if any([ not isinstance(param,bool) for param in [extended_weights, io_link]]):
+        if any([ not isinstance(param,bool) for param in [io_link]]):
             print('Flags (extended_weight and io_link) must be booleans.')
-            exit(-1)
-        if not isinstance(use_bias, bool):
-            print('use_bias must be a boolean')
             exit(-1)
             
         # Structural parameters
@@ -44,8 +41,6 @@ class RLVN:
         
         # Flags
         self.io_link = io_link
-        self.extended_weights = extended_weights
-        self.use_bias = use_bias
         
         # Random weights matrix
         self.random_weights = None
@@ -84,7 +79,7 @@ class RLVN:
     
     
     def randomize_weights(self, weights_range, seed):
-        ''' Random weights are (L, H) or (L, HQ) depending upon extended_weights boolean, in |rand| < |weights_range|. '''
+        ''' Random weights are (L, H) in |rand| < |weights_range|. '''
         # Sanity check
         if isinstance(weights_range, Iterable):
             print('Error, range must be a scalar')
@@ -93,21 +88,15 @@ class RLVN:
             print('Error range must be nonzero')
             exit(-1)
         
-        # Reset seed if necessary (it is always 'de-reseted' in the end of the method)
+        # Reset seed if necessary (it is always 'un-reset' in the end of the method)
         # If seed is None, this has no effect
         np.random.seed(seed)
         
         # With bias terms in the hidden node inputs, there is an extra weight for each node
-        if self.use_bias:
-            vec_cardinality = self.L + 1
-        else:  
-            vec_cardinality = self.L
+        vec_cardinality = self.L
         
-        # Randomize weights
-        if self.extended_weights:   # W = (cardinality, HQ)
-            self.random_weights = (np.random.rand(vec_cardinality, self.H * self.Q)  * 2 * weights_range) - weights_range
-        else:                       # W = (cardinality, H)
-            self.random_weights = (np.random.rand(vec_cardinality, self.H)           * 2 * weights_range) - weights_range
+        # Randomize weights; W = (cardinality, H)
+        self.random_weights = (np.random.rand(vec_cardinality, self.H) * 2 * weights_range) - weights_range
             
         np.random.seed()
     
@@ -124,12 +113,8 @@ class RLVN:
         laguerre_outputs = self.propagate_laguerre_filterbank(signal, alpha)
         
         # The input of each hidden node at some moment is the dot product between a random vector and the outputs of the Laguerre bank
-        # Hidden nodes input matrix may be (N,H) or (N, HQ), dependeing uppn self.extended_weights 
-        if not self.use_bias:
-            hidden_nodes_in = laguerre_outputs.T @ self.random_weights 
-        # With a bias terms in the hidden node inputs, we must augment the laguerre ouputs matrix
-        else:
-            hidden_nodes_in = np.vstack(( np.ones(N), laguerre_outputs)).T @ self.random_weights
+        # Hidden nodes input matrix is (N,H)  
+        hidden_nodes_in = laguerre_outputs.T @ self.random_weights 
         
         # The enhanced input matrix is (N, H * (Q - 1) +1), containing polynomial maps for each hidden node without coefficients
         # The polynomials do not use linear terms, since those would probably be linearly dependent
@@ -137,14 +122,9 @@ class RLVN:
         
         # When weights are extended, every polynomial term has a different random projection as input (HQ projections)
         # Else, the same random projection is shared inside each polynomial function of order Q (H projections)
-        if self.extended_weights:
-            # W = (L, HQ)
-            for q in range(2, self.Q + 1):
-                enhanced_input[:, 1  + (q - 2) * self.H : 1 + (q - 1) * self.H] = np.power(hidden_nodes_in[:,(q - 2) * self.H : (q - 1) * self.H], q)
-        else:                       
-            # W = (L, H)
-            for q in range(2, self.Q + 1):
-                enhanced_input[:, 1  + (q - 2) * self.H : 1 + (q - 1) * self.H] = np.power(hidden_nodes_in, q)
+        # W = (L, H)
+        for q in range(2, self.Q + 1):
+            enhanced_input[:, 1  + (q - 2) * self.H : 1 + (q - 1) * self.H] = np.power(hidden_nodes_in, q)
                 
         if self.io_link:
             enhanced_input = np.hstack(( enhanced_input, np.reshape(signal,(len(signal),1)) ))
