@@ -22,21 +22,25 @@ from collections.abc import Iterable
 class RLVN:
     ''' Reservoir Laguerre-Volterra network '''
     
-    def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval):
+    def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval, io_link):
         ''' Constructor '''
         
         # Sanity check
-        if any([ (not(isinstance(param,int)) or param <= 0) for param in [laguerre_order, num_hidden_units, polynomial_order]]):
+        if any([ (not(isinstance(param,int)) or param <= 0) for param in [laguerre_order, num_hidden_units, polynomial_order, sampling_interval]]):
             print('Error, structural parameters (L, H, Q and Fs) must be positive integers.')
             exit(-1)
-        if sampling_interval <= 0:
-            print('Sampling interval must be greater than zero')
+        if any([ not isinstance(param,bool) for param in [io_link]]):
+            print('Flags (extended_weight and io_link) must be booleans.')
             exit(-1)
+            
         # Structural parameters
         self.L = laguerre_order         # laguerre order
         self.H = num_hidden_units       # number of hidden units
         self.Q = polynomial_order       # polynomial order
         self.T = sampling_interval      # sampling interval
+        
+        # Flags
+        self.io_link = io_link
         
         # Random weights matrix
         self.random_weights = None
@@ -122,8 +126,8 @@ class RLVN:
         for q in range(2, self.Q + 1):
             enhanced_input[:, 1  + (q - 2) * self.H : 1 + (q - 1) * self.H] = np.power(hidden_nodes_in, q)
                 
-        # I/O link        
-        enhanced_input = np.hstack(( enhanced_input, np.reshape(signal,(len(signal),1)) ))
+        if self.io_link:
+            enhanced_input = np.hstack(( enhanced_input, np.reshape(signal,(len(signal),1)) ))
             
         # Instead of using hidde nodes inputs (projected random vectors) as linear terms,
         # we use the outputs of the Laguerre filterbank.
