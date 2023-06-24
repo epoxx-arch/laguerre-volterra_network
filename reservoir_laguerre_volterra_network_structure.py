@@ -24,32 +24,34 @@ from collections.abc import Iterable
 class RLVN:
     ''' Reservoir Laguerre-Volterra network '''
     
-    def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval, io_link):
+    def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval, bo_link):
         ''' Constructor '''
         
         # Sanity check
-        if any([ (not(isinstance(param,int)) or param <= 0) for param in [laguerre_order, num_hidden_units, polynomial_order, sampling_interval]]):
-            print('Error, structural parameters (L, H, Q and Fs) must be positive integers.')
+        if any([(not(isinstance(param,int)) or param <= 0) for param in [laguerre_order, num_hidden_units, polynomial_order]]):
+            print('Error, structural parameters (L, H and Q) must be positive integers.')
             exit(-1)
-        if any([ not isinstance(param,bool) for param in [io_link]]):
-            print('Flags (extended_weight and io_link) must be booleans.')
+        if sampling_interval <= 0:
+            print('Error, sampling interval must be a positive number')
             exit(-1)
-            
+        if any([ not isinstance(param,bool) for param in [bo_link]]):
+            print('Flag bo_link must be boolean.')
+            exit(-1)
+        
         # Structural parameters
         self.L = laguerre_order         # laguerre order
         self.H = num_hidden_units       # number of hidden units
         self.Q = polynomial_order       # polynomial order
         self.T = sampling_interval      # sampling interval
         
-        # Flags
-        self.io_link = io_link
+        # Flag to define if the network will either implement the poly linear terms
+        #  or a direct connection betwen filterbank and output
+        self.bo_link = bo_link
         
-        # Random weights matrix
-        self.random_weights = None
+        # Connection weights matrix
+        self.connection_weights = None
         # Least square solution
-        self.ls_solution = None
-        # The Laguerre alpha used to train the model is kept
-        self.train_alpha = None 
+        self.polynomial_coefficients = None
     
     def propagate_laguerre_filterbank(self, signal, alpha):
         ''' Propagate input signal through the Laguerre filter bank.
@@ -91,11 +93,19 @@ class RLVN:
       
     def set_polynomial_coefficients(self, polynomial_coefficients):
         '''  '''
+        print(f'TEST: poly_oefficients is {np.shape(polynomial_coefficients)}')
         
         
+        # Shape of poly coefficients depend on bo_link
+        if self.bo_link and np.shape(polynomial_coefficients) != (self.H * (self.Q - 1) + self.L + 1,):
+            print('Error, polynomial coefficients must be (H * (Q - 1) + L + 1) matrices')
+            exit(-1)
+        if not self.bo_link and np.shape(polynomial_coefficients) != (self.H * self.Q + 1,):
+            print('Error, polynomial coefficients must be (H * Q + 1) matrices')
+            exit(-1)
     
         self.polynomial_coefficients = polynomial_coefficients
-        
+
     def compute_enhanced_input(self, signal, alpha):
         ''' Given an input signal, linearly computes hidden units inputs and then compute the polynomial outputs. '''
         
@@ -115,8 +125,16 @@ class RLVN:
         hidden_nodes_in = laguerre_outputs.T @ self.connection_weights 
         
         # The enhanced input matrix is  populated by polynomial maps for each hidden node
+        # If the bank-output link flag is true, the polynomials do not use linear terms,
+        #  and instead includes the filterbank output to the enhanced input matrix
+        # enhanced_input is (N, H * (Q - 1) + L + 1), but (N, L) filterbank outputs will only be concatenated later
+        if self.bo_link:
+            enhanced_input = np.ones((N, self.H * (self.Q - 1) + 1))
+            first_index = 2
             
         
+        # enhanced_input is (N, H * Q + 1)
+        else:
             enhanced_input = np.ones((N, self.H * self.Q + 1))
             first_index = 1
         
@@ -125,6 +143,10 @@ class RLVN:
         for q in range(first_index, self.Q + 1):
             enhanced_input[:, 1  + (q - first_index) * self.H : 1 + (q - first_index + 1) * self.H] = np.power(hidden_nodes_in, q)
 
+        # Add the filterbank outputs to the enhanced_input matrix
+        # enhanced_input becomes (N, H * (Q - 1) + L + 1)
+        if self.bo_link:
+            enhanced_input = np.hstack((enhanced_input, laguerre_outputs.T))
             
         
         return enhanced_input
