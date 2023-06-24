@@ -15,7 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# 3rd party
 import numpy as np
+# Pyython std library
 import math
 from collections.abc import Iterable
 
@@ -61,8 +63,10 @@ class RLVN:
             print('Error, alpha must be positive')
             exit(-1)
         
+        # Compute sqrt(alpha) a single time
         alpha_sqrt = math.sqrt(alpha)
-        bank_outputs = np.zeros((self.L, 1 + len(signal)))      # The bank_outputs matrix initially has one extra column to represent zero values at n = -1
+        # The bank_outputs matrix initially has one extra column to represent zero values at n = -1
+        bank_outputs = np.zeros((self.L, 1 + len(signal)))
         
         # Propagate V_{j} with j = 0
         for n, sample in enumerate(signal):
@@ -77,35 +81,29 @@ class RLVN:
         
         return bank_outputs
     
-    
-    def randomize_weights(self, weights_range, seed):
-        ''' Random weights are (L, H) in |rand| < |weights_range|. '''
-        # Sanity check
-        if isinstance(weights_range, Iterable):
-            print('Error, range must be a scalar')
-            exit(-1)
-        if weights_range == 0:
-            print('Error range must be nonzero')
+    def set_connection_weights(self, connection_weights):
+        '''  '''
+        if np.shape(connection_weights) != (self.L, self.H):
+            print('Error, connection weights must be (L, H)')
             exit(-1)
         
-        # Reset seed if necessary (it is always 'un-reset' in the end of the method)
-        # If seed is None, this has no effect
-        np.random.seed(seed)
+        self.connection_weights = connection_weights
+      
+    def set_polynomial_coefficients(self, polynomial_coefficients):
+        '''  '''
         
-        # With bias terms in the hidden node inputs, there is an extra weight for each node
-        vec_cardinality = self.L
         
-        # Randomize weights; W = (cardinality, H)
-        self.random_weights = (np.random.rand(vec_cardinality, self.H) * 2 * weights_range) - weights_range
-            
-        np.random.seed()
     
+        self.polynomial_coefficients = polynomial_coefficients
         
     def compute_enhanced_input(self, signal, alpha):
-        ''' Given an input signal, linearly computes hidden units inputs and then compute the polynomial outputs.'''
+        ''' Given an input signal, linearly computes hidden units inputs and then compute the polynomial outputs. '''
         
-        if not isinstance(self.random_weights, Iterable):
-            print('Error, randomize weights before computing the enhanced input matrix for some signal.')
+        if not isinstance(self.connection_weights, Iterable):
+            print('Error, feed weights to the model before computing the enhanced input matrix for some signal.')
+            exit(-1)
+        if alpha <= 0:
+            print('Error, alpha must be a strictly positive number')
             exit(-1)
         
         # Propagation through Laguerre filter bank returns an (L,N) matrix
@@ -114,92 +112,36 @@ class RLVN:
         
         # The input of each hidden node at some moment is the dot product between a random vector and the outputs of the Laguerre bank
         # Hidden nodes input matrix is (N,H)  
-        hidden_nodes_in = laguerre_outputs.T @ self.random_weights 
+        hidden_nodes_in = laguerre_outputs.T @ self.connection_weights 
         
-        # The enhanced input matrix is (N, H * (Q - 1) +1), containing polynomial maps for each hidden node without coefficients
-        # The polynomials do not use linear terms, since those would probably be linearly dependent
-        enhanced_input = np.ones((N, self.H * (self.Q - 1) + 1))
+        # The enhanced input matrix is  populated by polynomial maps for each hidden node
+            
         
-        # When weights are extended, every polynomial term has a different random projection as input (HQ projections)
-        # Else, the same random projection is shared inside each polynomial function of order Q (H projections)
+            enhanced_input = np.ones((N, self.H * self.Q + 1))
+            first_index = 1
+        
+        # All positions of the first column remain ones to account for the output offset
         # W = (L, H)
-        for q in range(2, self.Q + 1):
-            enhanced_input[:, 1  + (q - 2) * self.H : 1 + (q - 1) * self.H] = np.power(hidden_nodes_in, q)
-                
-        if self.io_link:
-            enhanced_input = np.hstack(( enhanced_input, np.reshape(signal,(len(signal),1)) ))
+        for q in range(first_index, self.Q + 1):
+            enhanced_input[:, 1  + (q - first_index) * self.H : 1 + (q - first_index + 1) * self.H] = np.power(hidden_nodes_in, q)
+
             
-        # Instead of using hidde nodes inputs (projected random vectors) as linear terms,
-        # we use the outputs of the Laguerre filterbank.
-        enhanced_input = np.hstack(( enhanced_input, laguerre_outputs.T ))
-            
+        
         return enhanced_input
         
-        
-    def train(self, in_signal, out_signal, alpha, l2_regularization):
-        ''' Computes enhanced input matrix from input signal and estimates a linear map to the output signal.
-            It is possible to consider L2-regularization, performing Ridge regression. '''
-        
-        # Sanity checks
-        if not(isinstance(in_signal, Iterable) and isinstance(out_signal, Iterable)):
-            print('Error, both input and output signals must be iterable objects.')
-            exit(-1)
-        if len(in_signal) != len(out_signal):
-            print('Error, length of input and output signals must be equal.')
-            exit(-1)
-        if not isinstance(l2_regularization, bool):
-            print('Error, L2 regularization must be a boolean.')
-            exit(-1)
-            
-        # Compute enhanced input matrix with the randomized weights
-        enhanced_input = self.compute_enhanced_input(signal=in_signal, alpha=alpha)
-        
-        # Verify rank of the enhanced input matrix 
-        rank = np.linalg.matrix_rank(enhanced_input)
-        if rank != np.shape(enhanced_input[1]):
-            print('RANK DEFICIENCY')
-        #print(f'Cols = {np.shape(enhanced_input[1])}, rank = {rank}')
-        
-        # Keep alpha used to train the model (only after the function calls that verify alpha values)
-        self.train_alpha = alpha
-        
-        if l2_regularization:
-            lamb = 1e-1
-            diagonal_ridge = lamb*np.identity(enhanced_input.shape[1])
-            diagonal_ridge[0,0] = 0           
-            beta, _, _, _ = np.linalg.lstsq(enhanced_input.T @ enhanced_input + diagonal_ridge,
-                                               enhanced_input.T @ out_signal, rcond=None)
-                                               
-            #beta, _, rank, _ = np.linalg.lstsq(enhanced_input, out_signal, rcond=None)
-        else:
-            #beta = np.linalg.pinv(enhanced_input.T @  ) @ out_signal
-            beta, _, _, _ = np.linalg.lstsq(enhanced_input, out_signal, rcond=None)
-       
-        self.ls_solution = beta
-    
-        
-    def predict(self, in_signal):
+
+    def predict(self, in_signal, alpha):
         ''' Predicts output signal using the current least squares solution. '''
         
         # Sanity check
-        if not isinstance(self.ls_solution, Iterable) or self.train_alpha == None:
+        if not isinstance(self.polynomial_coefficients, Iterable):
             print('Error, train the model to define a least squares solution before predicting outputs.')
             exit(-1)
         if not isinstance(in_signal, Iterable):
             print('Error, input signal must be an iterable object')
             exit(-1)
-            
-        enhanced_input = self.compute_enhanced_input(signal=in_signal, alpha=self.train_alpha)
-        out_signal = enhanced_input @ self.ls_solution
         
-        return out_signal        
-    
-    
-    ## Getters
-    def get_weights(self):
-        ''' Return the current randomized weights matrix. '''
-        return self.random_weights
+        enhanced_input = self.compute_enhanced_input(signal=in_signal, alpha=alpha)
+        out_signal = enhanced_input @ self.polynomial_coefficients
         
-    def get_solution(self):
-        ''' Return the current least_squares solution. '''
-        return self.ls_solution
+        return out_signal

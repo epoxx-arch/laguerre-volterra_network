@@ -15,9 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import numpy as np
+
+# Own
 import data_handling
-import laguerre_volterra_network_structure
+# 3rd party
+import numpy as np
+# Pyython std library
+import math
+from collections.abc import Iterable
 
 # Normalized mean squared error
 def NMSE(y, y_pred, alpha):
@@ -76,9 +81,66 @@ def decode_solution(candidate_solution, L, H, Q):
     
     return alpha, W, C, offset
     
+
+#    
+def randomize_weights(weights_range, L, H):
+    ''' Random weights are (L, H) in |rand| < |weights_range|. '''
+
+    # Sanity check
+    if isinstance(weights_range, Iterable):
+        print('Error, range must be a scalar')
+        exit(-1)
+    if weights_range == 0:
+        print('Error range must be nonzero')
+        exit(-1)
+
+    # L and H define the 
+    vec_cardinality = L
+    num_hidden_units = H
+
+    # Randomize weights; W = (cardinality, H)
+    random_weights = (np.random.rand(vec_cardinality, num_hidden_units) * 2 * weights_range) - weights_range
+
+    return random_weights
+
+#
+def train_poly_least_squares(rlvn_model, in_signal, out_signal, alpha):
+    ''' Computes enhanced input matrix from input signal and estimates a linear map to the output signal.
+    It is possible to consider L2-regularization, performing Ridge regression. '''
     
-# Compute cost of candidate solution, which is encoded as a flat array: alpha, W(0,0) ... W(L-1,H-1), C(0,0) ... C(Q-1,H-1), offset
-def define_cost(L, H, Q, Fs, train_filename):
+    # Sanity checks
+    if not(isinstance(in_signal, Iterable) and isinstance(out_signal, Iterable)):
+        print('Error, both input and output signals must be iterable objects.')
+        exit(-1)
+    if len(in_signal) != len(out_signal):
+        print('Error, length of input and output signals must be equal.')
+        exit(-1)
+    
+    # Compute enhanced input matrix
+    enhanced_input = rlvn_model.compute_enhanced_input(signal=in_signal, alpha=alpha)
+    
+    # Verify rank of the enhanced input matrix 
+    rank = np.linalg.matrix_rank(enhanced_input)
+    if rank != np.shape(enhanced_input[1]):
+        print('RANK DEFICIENCY')
+    print(f'Cols = {np.shape(enhanced_input[1])}, rank = {rank}')
+
+    # 
+    l2_regularization = True
+    if l2_regularization:
+        lamb = 1e-1
+        diagonal_ridge = lamb * np.identity(enhanced_input.shape[1])
+        diagonal_ridge[0,0] = 0           
+        poly_coefficients, _, _, _ = np.linalg.lstsq(enhanced_input.T @ enhanced_input + diagonal_ridge,
+                                           enhanced_input.T @ out_signal, rcond=None)
+                                           
+        #poly_coefficients, _, rank, _ = np.linalg.lstsq(enhanced_input, out_signal, rcond=None)
+    else:
+        #poly_coefficients = np.linalg.pinv(enhanced_input.T @  ) @ out_signal
+        poly_coefficients, _, _, _ = np.linalg.lstsq(enhanced_input, out_signal, rcond=None)
+   
+    return poly_coefficients  
+
     # Cost computation parameterized by the nesting function (define_cost)
     # modified_variable indicates which parameters were modified in the solution. -1 if all of them were.
     def compute_cost(candidate_solution, modified_variable):
