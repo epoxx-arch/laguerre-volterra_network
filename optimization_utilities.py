@@ -24,6 +24,15 @@ import numpy as np
 import math
 from collections.abc import Iterable
 
+# 
+def laguerre_filter_memory(alpha):
+    
+    M = (-30 - math.log(1 - alpha)) / math.log(alpha)
+    M = math.ceil(M)
+    
+    return M
+    
+    
 # Normalized mean squared error
 def NMSE(y, y_pred, alpha):
     if len(y) != len(y_pred):
@@ -31,7 +40,7 @@ def NMSE(y, y_pred, alpha):
         exit(-1)
     
     # Laguerre alpha paremeter determines the system memory (find reference for formula)
-    M = laguerre_volterra_network_structure.laguerre_filter_memory(alpha)
+    M = laguerre_filter_memory(alpha)
     
     if len(y) <= M:
         print("Data length is less than required by the alpha parameter")
