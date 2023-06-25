@@ -69,7 +69,7 @@ class RLVN:
         alpha_sqrt = math.sqrt(alpha)
         # The bank_outputs matrix initially has one extra column to represent zero values at n = -1
         bank_outputs = np.zeros((self.L, 1 + len(signal)))
-        
+
         # Propagate V_{j} with j = 0
         for n, sample in enumerate(signal):
             bank_outputs[0, n + 1] = alpha_sqrt * bank_outputs[0, n - 1 + 1] +  self.T * np.sqrt(1 - alpha) * sample
@@ -93,14 +93,12 @@ class RLVN:
       
     def set_polynomial_coefficients(self, polynomial_coefficients):
         '''  '''
-        print(f'TEST: poly_oefficients is {np.shape(polynomial_coefficients)}')
-        
         
         # Shape of poly coefficients depend on bo_link
-        if self.bo_link and np.shape(polynomial_coefficients) != (self.H * (self.Q - 1) + self.L + 1,):
+        if self.bo_link and np.shape(polynomial_coefficients)[0] != (self.H * (self.Q - 1) + self.L + 1):
             print('Error, polynomial coefficients must be (H * (Q - 1) + L + 1) matrices')
             exit(-1)
-        if not self.bo_link and np.shape(polynomial_coefficients) != (self.H * self.Q + 1,):
+        if not self.bo_link and np.shape(polynomial_coefficients)[0] != (self.H * self.Q + 1):
             print('Error, polynomial coefficients must be (H * Q + 1) matrices')
             exit(-1)
     
@@ -131,7 +129,6 @@ class RLVN:
         if self.bo_link:
             enhanced_input = np.ones((N, self.H * (self.Q - 1) + 1))
             first_index = 2
-            
         
         # enhanced_input is (N, H * Q + 1)
         else:
@@ -147,7 +144,6 @@ class RLVN:
         # enhanced_input becomes (N, H * (Q - 1) + L + 1)
         if self.bo_link:
             enhanced_input = np.hstack((enhanced_input, laguerre_outputs.T))
-            
         
         return enhanced_input
         
