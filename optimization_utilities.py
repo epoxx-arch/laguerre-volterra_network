@@ -18,6 +18,7 @@
 
 # Own
 import data_handling
+from reservoir_laguerre_volterra_network_structure import RLVN
 # 3rd party
 import numpy as np
 # Pyython std library
@@ -31,7 +32,7 @@ def laguerre_filter_memory(alpha):
     M = math.ceil(M)
     
     return M
-    
+
     
 # Normalized mean squared error
 def NMSE(y, y_pred, alpha):
@@ -72,24 +73,47 @@ def NMSE_explicit_memory(y, y_pred, M):
     
     return NMSE
 
-# Break flat list-like solution into [alpha, W, C, offset] for a given LVN structure
-# USED WITH METAHEURISTICS
-def decode_solution(candidate_solution, L, H, Q):
+# Break solution into [alpha, wrange] for a given LVN structure
+def decode_alpha_range(candidate_solution):
+    # Identify solution members
+    alpha = candidate_solution[0]
+    weights_range = candidate_solution[1]
+    
+    return alpha, weights_range
+
+# Break flat list-like solution into [alpha, W] for a given LVN structure
+def decode_alpha_weights(candidate_solution, L, H):
     # Identify solution members
     alpha = candidate_solution[0]
     flat_W = candidate_solution[1 : (H * L + 1)]
-    flat_C = candidate_solution[(H * L + 1) : (H * L + 1) + H * Q]
-    offset = candidate_solution[(H * L + 1) + H * Q]
     
     # unflatten W and C
     W = []
-    C = []
-    for hidden_unit in range(H):
-        W.append( flat_W[hidden_unit * L : (hidden_unit + 1) * L] )
-        C.append( flat_C[hidden_unit * Q : (hidden_unit + 1) * Q] )
+    # for hidden_unit in range(H):
+        # W.append( flat_W[hidden_unit * L : (hidden_unit + 1) * L] )
+    for bank_out in range(L):
+        W.append( flat_W[bank_out * H : (bank_out + 1) * H] )
+        
+    return alpha, W
+
+# Break flat list-like solution into [alpha, W, C] for a given LVN structure
+def decode_alpha_weights_coefficients(candidate_solution, L, H, Q, bo_link):
     
-    return alpha, W, C, offset
+    # Identify solution members
+    alpha = candidate_solution[0]
+    flat_W = candidate_solution[1 : (H * L + 1)]
     
+    if bo_link:
+        flat_C = candidate_solution[(H * L + 1) : (H * L + 1) + H * (Q - 1) + L + 1]
+    else:
+        flat_C = candidate_solution[(H * L + 1) : (H * L + 1) + H * Q  + 1]
+    
+    # unflatten W
+    W = []
+    for bank_out in range(L):
+        W.append( flat_W[bank_out * H : (bank_out + 1) * H] )
+
+    return alpha, W, flat_C
 
 #    
 def randomize_weights(weights_range, L, H):
@@ -109,7 +133,7 @@ def randomize_weights(weights_range, L, H):
 
     # Randomize weights; W = (cardinality, H)
     random_weights = (np.random.rand(vec_cardinality, num_hidden_units) * 2 * weights_range) - weights_range
-
+    
     return random_weights
 
 #
@@ -130,8 +154,8 @@ def train_poly_least_squares(rlvn_model, in_signal, out_signal, alpha):
     
     # Verify rank of the enhanced input matrix 
     rank = np.linalg.matrix_rank(enhanced_input)
-    if rank != np.shape(enhanced_input[1]):
-        print('RANK DEFICIENCY')
+    # if rank != np.shape(enhanced_input[1]):
+        # print('RANK DEFICIENCY')
     print(f'Cols = {np.shape(enhanced_input[1])}, rank = {rank}')
 
     # 
@@ -142,7 +166,7 @@ def train_poly_least_squares(rlvn_model, in_signal, out_signal, alpha):
         diagonal_ridge[0,0] = 0           
         poly_coefficients, _, _, _ = np.linalg.lstsq(enhanced_input.T @ enhanced_input + diagonal_ridge,
                                            enhanced_input.T @ out_signal, rcond=None)
-                                           
+        
         #poly_coefficients, _, rank, _ = np.linalg.lstsq(enhanced_input, out_signal, rcond=None)
     else:
         #poly_coefficients = np.linalg.pinv(enhanced_input.T @  ) @ out_signal
@@ -150,32 +174,83 @@ def train_poly_least_squares(rlvn_model, in_signal, out_signal, alpha):
    
     return poly_coefficients  
 
-    # Cost computation parameterized by the nesting function (define_cost)
-    # modified_variable indicates which parameters were modified in the solution. -1 if all of them were.
-    def compute_cost(candidate_solution, modified_variable):
-        
-        # IO
-        train_input, train_output = data_handling.read_io(train_filename)
+# Compute cost of candidate solution, which is encoded as a flat array
+# The content of this array depends on the solution_encoding parameter
+#
+# For solution_encoding = 2: Optimize alphas, weights and coefficients
+# For solution_encoding = 1: Optimize alphas and weights
+# For solution_encoding = 0: Optimize alphas and weights range
+#
+# Candidate solution encoding:
+#   -- 0: [alpha, weights_range]
+#   -- 1: [alpha, W(0,0) ... W(L-1,H-1)]
+#   -- 2 w/o BO link: [alpha, W(0,0) ... W(L-1,H-1), C(0) ... C(H * Q + 1)]
+#   -- 2 w/ BO link:  [alpha, W(0,0) ... W(L-1,H-1), C(0) ... C(H * (Q - 1) + L + 1)]
+def define_cost(solution_encoding, L, H, Q, bo_link, Fs, train_filename):
+    if solution_encoding < 0 or solution_encoding >= 3:
+        print('Error, solution_encoding must be 0, 1 or 2')
+        exit(-1)
+      
+    # IO
+    train_in, train_out = data_handling.read_io(train_filename)
 
-        # Get parameters from candidate solution
-        alpha, W, C, offset = decode_solution(candidate_solution, L, H, Q)
-        
-        # If the weights were modified, set flag so LVN normalizes weights and scales coefficients before output computation 
-        if modified_variable == -1 or (modified_variable >= 1 and modified_variable <= L * H):
-            weights_modified = True
-        else:
-            weights_modified = False
+    # Cost computation parameterized by the nesting function (define_cost)
+    def compute_cost(candidate_solution):
+        # 
+        if ((solution_encoding == 0 and len(candidate_solution) != 2) or
+            (solution_encoding == 1 and len(candidate_solution) != H * L + 1) or
+            (solution_encoding == 2 and bo_link and len(candidate_solution) != H * L + 1 + H * (Q - 1) + L + 1) or
+            (solution_encoding == 2 and not bo_link and len(candidate_solution) != H * L + 1 + H * Q + 1)):
             
-        # Generate output and compute cost
-        solution_system = laguerre_volterra_network_structure.LVN()
-        solution_system.define_structure(L, H, Q, 1/Fs)
-        solution_output = solution_system.compute_output(train_input, alpha, W, C, offset, weights_modified)
+            print('Error, wrong length of the candidate solution for given solution encoding scheme')
+            print(np.shape(candidate_solution))
+            print(len(candidate_solution))
+            print(H * L + 1)
+            
+            exit(-1)
         
-        cost = NMSE(train_output, solution_output, alpha)
+        # RLVN model
+        candidate_model = RLVN(L, H, Q, 1 / Fs, bo_link)
+        
+        # Get parameters from candidate solution, depending on the solution encoding scheme
+        ## In solution encoding 0, weights are randomized and
+        ##   poly coefficients are found with least-square errors
+        if solution_encoding == 0:
+            alpha, weights_range = decode_alpha_range(candidate_solution)
+            W = randomize_weights(weights_range, L, H)
+            
+            print(f'TEST: alpha is {alpha}, wrange is {weights_range}')
+    
+        ## In solution encoding 1, poly coefficients are found with least-square errors
+        elif solution_encoding == 1:
+            alpha, W = decode_alpha_weights(candidate_solution, L, H)
+            
+            print(f'TEST: alpha is {alpha}, W is {W}')
+        
+        ## In solution encoding  2, all parameters are found with metaheuristics
+        else:
+            alpha, W, C = decode_alpha_weights_coefficients(candidate_solution, L, H, Q, bo_link)
+            
+            print(f'TEST: alpha is {alpha}, W is {W},  C is {C}')
+        
+        # Feed weights to the model
+        candidate_model.set_connection_weights(W)        
+        
+        # Define C as least-squares solution for the matrix formulation
+        if solution_encoding == 0 or solution_encoding == 1:
+            C = train_poly_least_squares(candidate_model, train_in, train_out, alpha)
+        
+        # Set poly coefficients in the model
+        candidate_model.set_polynomial_coefficients(C)
+
+        # Predict
+        ## Given signal, W and C, compute output signal and cost of the candidate solution
+        
+        # if solution_encoding == 2 and bo_link == True:
+            # print(train_in)
+        model_out = candidate_model.predict(train_in, alpha)
+        cost = NMSE(train_out, model_out, alpha)
         
         return cost
         
     return compute_cost
-
-
-    

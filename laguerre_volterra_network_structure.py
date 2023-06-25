@@ -21,8 +21,6 @@ from collections.abc import Iterable
 # Third party
 import numpy as np
 
-
-
 class LVN:
     ''' Class defining structure of the Laguerre-Volterra network (LVN) for a generic set of parameters. '''
     def __init__(self):
@@ -41,7 +39,6 @@ class LVN:
         self.Q = polynomial_order
         self.T = sampling_interval
         
-      
     def normalize_scale_parameters(self, hidden_units_weights, polynomial_coefficients):
         ''' Normalize hidden unit input weights to unit norm and scale polynomial coefficients according to the hidden unit it belongs and the polynomial order. '''
         # Shape of the dependent parameters are defined by structural parameters 

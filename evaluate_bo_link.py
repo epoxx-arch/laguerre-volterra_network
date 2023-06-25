@@ -56,7 +56,6 @@ wrange = 0.1
 # Laguerre smoothing constant
 alpha = 0.7
 # Number of runs
-seed = None
 ntimes = 10
 #
 l2_regularization = True
