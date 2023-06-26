@@ -120,8 +120,8 @@ for _ in range(ntimes):
 
 
 print('Train')
-print(f'NMSE without bo: {np.mean(bo_false_train_errors)} ({np.std(bo_false_train_errors)})')
-print(f'NMSE with bo: {np.mean(bo_true_train_errors)} ({np.std(bo_true_train_errors)})')
+print(f'NMSE without bo: {np.mean(bo_false_train_errors)} ({np.std(bo_false_train_errors, ddof = -1)})')
+print(f'NMSE with bo: {np.mean(bo_true_train_errors)} ({np.std(bo_true_train_errors, ddof = -1)})')
 print('Test')
-print(f'NMSE without bo: {np.mean(bo_false_test_errors)} ({np.std(bo_false_test_errors)})')
-print(f'NMSE with bo: {np.mean(bo_true_test_errors)} ({np.std(bo_true_test_errors)})')
+print(f'NMSE without bo: {np.mean(bo_false_test_errors)} ({np.std(bo_false_test_errors, ddof = -1)})')
+print(f'NMSE with bo: {np.mean(bo_true_test_errors)} ({np.std(bo_true_test_errors, ddof = -1)})')
