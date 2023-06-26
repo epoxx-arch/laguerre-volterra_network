@@ -73,7 +73,7 @@ class ACOr(Base):
         """ Defines the number of variables, their initial values ranges and wether or not these ranges constrain the variable during the search """
         # Input error checking
         if self.num_iter == 0:
-            print("Error, please set algorithm parameters before variables definition")
+            print("Error, trying to define variables before setting algorithm parameters or using k = num_iter")
             exit(-1)
         if len(initial_ranges) == 0 or len(is_bounded) == 0:
             print("Error, initial_ranges and is_bounded lists must not be empty")
@@ -142,12 +142,12 @@ class ACOr(Base):
         for i in range(self.k):
             for j in range(self.num_variables): 
                 self.SA[i, j] = np.random.uniform(self.initial_ranges[j][0], self.initial_ranges[j][1])     # Initialize solution archive randomly
-            self.SA[i, -1] = self.cost_function(self.SA[i, 0:self.num_variables], -1)                           # Get initial cost for each solution
+            self.SA[i, -1] = self.cost_function(self.SA[i, 0:self.num_variables])                           # Get initial cost for each solution
         self.SA = self.SA[self.SA[:, -1].argsort()]                                                         # Sort solution archive (best solutions first)
         
         # Array containing indices of solution archive position
         x = np.linspace(1,self.k,self.k) 
-        w = self.gaussian_pdf_weights(x)                                         # Weights as a gaussian function of rank with mean 1, std qk
+        w = self.gaussian_pdf_weights(x)                                         # Weights as a Gaussian function of rank with mean 1, std qk
         p = w/sum(w) 
         
         if self.verbosity:   print("ALGORITHM MAIN LOOP")
@@ -182,7 +182,7 @@ class ACOr(Base):
                             # pop[ant, var] = np.random.uniform(self.initial_ranges[var][0], self.initial_ranges[var][1])
                     
                 # Evaluate cost of new solution
-                pop[ant, -1] = self.cost_function(pop[ant, 0:self.num_variables], -1)       
+                pop[ant, -1] = self.cost_function(pop[ant, 0:self.num_variables])       
                 
                 # Check if the new solution is better than the one the ant sampled from
                 if pop[ant, -1] < self.SA[l, -1]:
@@ -207,7 +207,6 @@ class ACOr(Base):
                 recorded_solutions.append(np.array(self.best_solution))
             
         return np.array(recorded_solutions)
-        
         
 
 # Success rate adaptive ACOr 
@@ -445,3 +444,4 @@ class BAACOr(SRAACOr):
         
         # Compute new q
         self.q = self.evaluate_map('q', self.success_rate)
+       

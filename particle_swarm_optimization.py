@@ -34,7 +34,7 @@ class PSO(Base):
         self.population_size = 0                # Number of particles
         self.personal_acceleration = 0.5        # Tendency towards personal bests
         self.global_acceleration = 0.5          # Tendency towards global best
-        self.inertia_weight = 0.99              # Inertia weight constant at one is the same as no inertia weight
+        self.inertia_weight = 1.0               # Inertia weight constant at one is the same as no inertia weight
         
         # Optimization results
         self.swarm_positions = None             # Current solutions of the swarm
@@ -131,7 +131,7 @@ class PSO(Base):
             
             for particle in range(self.population_size):
                 # Compute cost of new position
-                self.swarm_positions[particle, -1] = self.cost_function(self.swarm_positions[particle, :-1], -1)
+                self.swarm_positions[particle, -1] = self.cost_function(self.swarm_positions[particle, :-1])
                 
                 # Update personal best solution
                 if self.swarm_positions[particle, -1] < self.personal_bests[particle, -1]:

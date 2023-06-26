@@ -156,7 +156,7 @@ def train_poly_least_squares(rlvn_model, in_signal, out_signal, alpha):
     rank = np.linalg.matrix_rank(enhanced_input)
     # if rank != np.shape(enhanced_input[1]):
         # print('RANK DEFICIENCY')
-    print(f'Cols = {np.shape(enhanced_input[1])}, rank = {rank}')
+    # print(f'Cols = {np.shape(enhanced_input[1])}, rank = {rank}')
 
     # 
     l2_regularization = True
@@ -219,19 +219,19 @@ def define_cost(solution_encoding, L, H, Q, bo_link, Fs, train_filename):
             alpha, weights_range = decode_alpha_range(candidate_solution)
             W = randomize_weights(weights_range, L, H)
             
-            print(f'TEST: alpha is {alpha}, wrange is {weights_range}')
+            # print(f'TEST: alpha is {alpha}, wrange is {weights_range}')
     
         ## In solution encoding 1, poly coefficients are found with least-square errors
         elif solution_encoding == 1:
             alpha, W = decode_alpha_weights(candidate_solution, L, H)
             
-            print(f'TEST: alpha is {alpha}, W is {W}')
+            # print(f'TEST: alpha is {alpha}, W is {W}')
         
         ## In solution encoding  2, all parameters are found with metaheuristics
         else:
             alpha, W, C = decode_alpha_weights_coefficients(candidate_solution, L, H, Q, bo_link)
             
-            print(f'TEST: alpha is {alpha}, W is {W},  C is {C}')
+            # print(f'TEST: alpha is {alpha}, W is {W},  C is {C}')
         
         # Feed weights to the model
         candidate_model.set_connection_weights(W)        

@@ -135,8 +135,8 @@ nmse_train = ou.NMSE(train_out, model_train_out, alpha)
 
 print(f'Train NMSE [2.2] : {nmse_train}')
 
-# COST FUNCTION TESTS
-# 
+#
+# Define cost functions
 
 bo_link = False
 cost_0 = ou.define_cost(0, L, H, Q, bo_link, Fs, train_filename)
@@ -146,7 +146,7 @@ cost_2_1 = ou.define_cost(2, L, H, Q, bo_link, Fs, train_filename)
 bo_link = True
 cost_2_2 = ou.define_cost(2, L, H, Q, bo_link, Fs, train_filename)
 
-# Define model given ALPHA and RANGE of random weights
+# Compute cost given ALPHA and RANGE of random weights
 ## Parameters
 alpha = 0.7
 wrange = 0.1
@@ -155,7 +155,7 @@ solution = [alpha, wrange]
 nmse = cost_0(solution)
 print(f'CF NMSE [0] : {nmse}')
 
-# Define model given ALPHA and W
+# Compute cost given ALPHA and W
 ## Parameters
 W = [1, 1.5, 2, 2.5, 3, 3.5]
 
@@ -164,7 +164,7 @@ print(solution)
 nmse = cost_1(solution)
 print(f'CF NMSE [1] : {nmse}')
 
-# Define model given ALPHA, W and C
+# Compute cost given ALPHA, W and C
 ## Parameters
 # Without BO link
 C = [0.5, 2, 3, 4, 5]
