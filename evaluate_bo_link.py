@@ -29,23 +29,19 @@ if len(sys.argv) != 3:
     print('Error, use as ' + sys.argv[0] + ' \'short\'|\'long\ \'finite\'|\'infinite\'')
     exit(-1)
     
-size = (sys.argv[1]).lower()
-order = (sys.argv[2]).lower()
-if size != 'short' and size != 'long':
+data_size = (sys.argv[1]).lower()
+data_order = (sys.argv[2]).lower()
+if data_size != 'short' and data_size != 'long':
     print('Error, size must be \'short\' or \'long\'')
     exit(-1)
-if order != 'finite' and order != 'infinite':
+if data_order != 'finite' and data_order != 'infinite':
     print('Erro r, order must be \'finite\' or \'infinite\'')
     exit(-1)    
     
-print(f'Size = {size}, order = {order}')
+print(f'Size = {data_size}, order = {data_order}')
     
-if size == 'short':
-    train_in, train_out = read_io('./signals_and_systems/' + order + '_order_train.csv')
-    test_in, test_out   = read_io('./signals_and_systems/' + order + '_order_test.csv')
-else:        # size == 'long'
-    train_in, train_out = read_io('./signals_and_systems/long_' + order + '_train.csv')
-    test_in, test_out   = read_io('./signals_and_systems/long_' + order + '_test.csv')
+train_in, train_out = read_io('./signals_and_systems/' + data_size + '_' + data_order + '_train.csv')
+test_in, test_out   = read_io('./signals_and_systems/' + data_size + '_' + data_order + '_test.csv')
 
 ## Configs
 # Structure

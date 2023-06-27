@@ -26,7 +26,7 @@ import sys
 import numpy as np
 
 # PADRONIZAR NOMES DE ARQUIVOS
-train_filename = './signals_and_systems/finite_order_train.csv'
+train_filename = './signals_and_systems/short_finite_train.csv'
 train_in, train_out = read_io(train_filename)
 
 # print(f'Train len: {len(train_in)}  Test len: {len(test_in)}')

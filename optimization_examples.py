@@ -29,7 +29,7 @@ import sys
 import numpy as np
 
 #
-train_filename = './signals_and_systems/finite_order_train.csv'
+train_filename = './signals_and_systems/short_finite_train.csv'
 train_in, train_out = read_io(train_filename)
 
 ## Structure
