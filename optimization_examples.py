@@ -101,7 +101,7 @@ ar_ranges.append([wrange_min, wrange_max])
 ar_bounding.append(False)
 
 # Optimization
-function_evals = [200]
+function_evals = [75, 100, 125, 150, 175, 200]
 ntimes = 30
 
 #
@@ -146,17 +146,25 @@ ACOr_awc.define_variables(awc_ranges, awc_bounding)
 for _ in range(ntimes):
     #
     best_solution = ACOr_ar.optimize()
-    best_cost = (np.array(best_solution).flatten())[-1]
+    best_cost = (np.array(best_solution))[:, -1]
     ar_costs.append(best_cost)
     #
     best_solution = ACOr_aw.optimize()
-    best_cost = (np.array(best_solution).flatten())[-1]
+    best_cost = (np.array(best_solution))[:, -1]
     aw_costs.append(best_cost)
     #
     best_solution = ACOr_awc.optimize()
-    best_cost = (np.array(best_solution).flatten())[-1]
-    awc_costs.append(best_cost)
+    best_cost = (best_solution)[:, -1]
+    awc_costs.append(np.array(best_cost))
+    
+# print(f'ACOr AR {np.shape(ar_costs)} {ar_costs})')
+# print(f'ACOr AW {np.shape(aw_costs)} {aw_costs}')
+# print(f'ACOr AWC {np.shape(awc_costs)} {awc_costs}')
 
-print(f'ACOr AR {np.mean(ar_costs)} ({np.std(ar_costs, ddof = -1)})')
-print(f'ACOr AW {np.mean(aw_costs)} ({np.std(aw_costs, ddof = -1)})')
-print(f'ACOr AWC {np.mean(awc_costs)} ({np.std(awc_costs, ddof = -1)})')
+ar_avg_history = np.sum(ar_costs, axis=0) / ntimes
+aw_avg_history = np.sum(aw_costs, axis=0) / ntimes
+awc_avg_history = np.sum(awc_costs, axis=0) / ntimes
+
+print(f'ACOr AR {np.shape(ar_avg_history)} {ar_avg_history})')
+print(f'ACOr AW {np.shape(aw_avg_history)} {aw_avg_history}')
+print(f'ACOr AWC {np.shape(awc_avg_history)} {awc_avg_history}')
