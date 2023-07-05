@@ -19,28 +19,42 @@
 import math
 # Third party
 import numpy as np
-# LVN
-from laguerre_volterra_network_structure import LVN
+# Own
+from reservoir_laguerre_volterra_network_structure import RLVN
 
-# Sampling frequency fixed at 25 Hz
-Fs = 25
-
-# Simulate Laguerre-Volterra Network of arbitrary structure with randomized parameters, and return both output signal and the parameters used (to use the same set of parameters in the test set)
-def simulate_LVN_random(input_signal, L, H, Q):
-    # Continuous parameters
-    alpha = np.random.uniform(0, 0.5)  
-    W = [list(np.random.random(L) * 2 - 1) for _ in range(H)]
-    C = [list(np.random.random(Q) * 4 - 2) for _ in range(H)]
-    offset = np.random.random()
-    system_parameters = [alpha, W, C, offset]
+# Simulate Laguerre-Volterra Network of arbitrary structure with randomized parameters
+# Returns output signal and the parameters used, so that the same parameters can be used with the test set
+def simulate_LVN_random_parameters(input_signal, L, H, Q, Fs, bo_link):
+    # 
+    alpha_range = 0.5
+    alpha = np.random.uniform(0, alpha_range)  
     
-    system = LVN()
-    system.define_structure(L, H, Q, 1/Fs)
-    output_signal = system.compute_output(input_signal, alpha, W, C, offset, False)
+    # 
+    weights_range = 1
+    W = (np.random.rand(L, H) * 2 * weights_range) - weights_range
+    
+    #
+    if bo_link:
+        C = np.random.rand(H * (Q - 1) + L + 1)
+    else:
+        C = np.random.rand(H * Q  + 1)
+    
+    #
+    system = RLVN(L, H, Q, 1 / Fs, bo_link)
+    system.set_connection_weights(W)
+    system.set_polynomial_coefficients(C)
+    
+    #
+    output_signal = system.predict(input_signal, alpha)
+    
+    #
+    system_parameters = {'alpha': alpha,
+                         'W': W,
+                         'C': C}
     
     return output_signal, system_parameters
     
-
+'''
 # Simulate LVN of arbitrary structure with deterministic parameters, and return output signal
 def simulate_LVN_deterministic(input_signal, L, H, Q, parameters):
     alpha = parameters[0]
@@ -97,4 +111,4 @@ def simulate_cascaded_deterministic(input_signal, alphas):
         output_signal.append(y)
     
     return output_signal
-    
+'''
