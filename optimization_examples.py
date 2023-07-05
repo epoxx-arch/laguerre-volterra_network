@@ -17,11 +17,12 @@
 
 # Own
 from reservoir_laguerre_volterra_network_structure import RLVN
+import optimization_utilities as ou
+from data_handling import read_io
+## MH
 import ant_colony_for_continuous_domains
 import simulated_annealing
 import particle_swarm_optimization
-import optimization_utilities as ou
-from data_handling import read_io
 # Pyython std library
 import math
 import sys
@@ -30,7 +31,10 @@ import numpy as np
 
 #
 train_filename = './signals_and_systems/short_finite_train.csv'
+test_filename = './signals_and_systems/short_finite_test.csv'
 train_in, train_out = read_io(train_filename)
+test_in, test_out = read_io(test_filename)
+
 
 ## Structure
 L = 3; H = 5; Q = 2
@@ -59,8 +63,9 @@ cost_alpha_weights_coef = ou.define_cost(encoding_scheme, L, H, Q, bo_link, Fs, 
 ## Parameters to be optimized
 alpha_min   = 1e-5; alpha_max   = 0.9   # estimated lag with alpha = 0.9 is 263
 weight_min  = -1;   weight_max  = 1
-wrange_min  = -5;   wrange_max  = 5
+wrange_min  = 1e-5;    wrange_max  = 1
 coef_min    = -1;   coef_max    = 1  
+# coef_min    = -1E-5;   coef_max    = 1E-5
 
 # Define the ranges to be used in random initialization of algorithms for each variable,
 #  along with which variables are bounded by these ranges during the optimization
@@ -98,19 +103,23 @@ for _ in range(num_coefs):
 
 # Weight ranges optimization
 ar_ranges.append([wrange_min, wrange_max])
-ar_bounding.append(False)
+ar_bounding.append(True)
 
 # Optimization
 function_evals = [75, 100, 125, 150, 175, 200]
 ntimes = 30
+#
+ar_train_costs = []
+aw_train_costs = []
+awc_train_costs = []
 
 #
-awc_costs = []
-aw_costs = []
-ar_costs = []
+ar_test_costs = []
+aw_test_costs = []
+awc_test_costs = []
 
-# ACOr optimizing encoding scheme 0: 
-# Total # of function evaluations: archive_size + population_size * num_iterations
+# Ant Colony Optimization
+# ACOr optimizing encoding scheme 0:
 solution_encoding = 0
 print(f'ACOr AR [{solution_encoding}]')
 m = 5; k = 50; q = 0.01; xi = 0.85
@@ -120,8 +129,7 @@ ACOr_ar.set_cost(ou.define_cost(solution_encoding, L, H, Q, bo_link, Fs, train_f
 ACOr_ar.set_parameters(m, k, q, xi, function_evals)
 ACOr_ar.define_variables(ar_ranges, ar_bounding)
 
-# ACOr optimizing encoding scheme 1: 
-# Total # of function evaluations: archive_size + population_size * num_iterations
+# ACOr optimizing encoding scheme 1:
 solution_encoding = 1
 print(f'ACOr AW [{solution_encoding}]')
 m = 5; k = 50; q = 0.01; xi = 0.85
@@ -131,8 +139,7 @@ ACOr_aw.set_cost(ou.define_cost(solution_encoding, L, H, Q, bo_link, Fs, train_f
 ACOr_aw.set_parameters(m, k, q, xi, function_evals)
 ACOr_aw.define_variables(aw_ranges, aw_bounding)
 
-# ACOr optimizing encoding scheme 2: 
-# Total # of function evaluations: archive_size + population_size * num_iterations
+# ACOr optimizing encoding scheme 2:
 solution_encoding = 2
 print(f'ACOr AWC [{solution_encoding}]')
 m = 5; k = 50; q = 0.01; xi = 0.85
@@ -145,26 +152,92 @@ ACOr_awc.define_variables(awc_ranges, awc_bounding)
 #
 for _ in range(ntimes):
     #
-    best_solution = ACOr_ar.optimize()
-    best_cost = (np.array(best_solution))[:, -1]
-    ar_costs.append(best_cost)
+    ar_solutions = ACOr_ar.optimize()
+    ar_cost_history = (np.array(ar_solutions))[:, -1]
+    ar_train_costs.append(ar_cost_history)
+    # 
+    aw_solutions = ACOr_aw.optimize()
+    aw_cost_history = (np.array(aw_solutions))[:, -1]
+    aw_train_costs.append(aw_cost_history)
     #
-    best_solution = ACOr_aw.optimize()
-    best_cost = (np.array(best_solution))[:, -1]
-    aw_costs.append(best_cost)
-    #
-    best_solution = ACOr_awc.optimize()
-    best_cost = (best_solution)[:, -1]
-    awc_costs.append(np.array(best_cost))
+    awc_solutions = ACOr_awc.optimize()
+    awc_cost_history = np.array(awc_solutions)[:, -1]
+    awc_train_costs.append(awc_cost_history)
     
-# print(f'ACOr AR {np.shape(ar_costs)} {ar_costs})')
-# print(f'ACOr AW {np.shape(aw_costs)} {aw_costs}')
-# print(f'ACOr AWC {np.shape(awc_costs)} {awc_costs}')
+    # 
+    ar_cost_history_test = []
+    aw_cost_history_test = []
+    awc_cost_history_test = []
+    
+    for ar, aw, awc in zip(ar_solutions, aw_solutions, awc_solutions):
+        
+        # AR strategy
+        print('AR')
+        model = RLVN(L, H, Q, 1 / Fs, bo_link)
+        
+        alpha, range = ou.decode_alpha_range(ar)
+        print(alpha, range)
+        
+        W = ou.randomize_weights(range, L, H)
+        model.set_connection_weights(W)
+        
+        C = ou.train_poly_least_squares(model, train_in, train_out, alpha)
+        model.set_polynomial_coefficients(C)
+        
+        pred_test_out = model.predict(test_in, alpha)
+        cost = ou.NMSE(test_out, pred_test_out, alpha)
+        ar_cost_history_test.append(cost)
+        
+        # AW strategy
+        print('AW')
+        model = RLVN(L, H, Q, 1 / Fs, bo_link)
+        
+        alpha, W = ou.decode_alpha_weights(aw, L, H)
+        print(alpha, W)
+        
+        model.set_connection_weights(W)
+        C = ou.train_poly_least_squares(model, train_in, train_out, alpha)
+        model.set_polynomial_coefficients(C)
+        
+        pred_test_out = model.predict(test_in, alpha)
+        cost = ou.NMSE(test_out, pred_test_out, alpha)
+        aw_cost_history_test.append(cost)
+        
+        # AWC strategy
+        print('AWC')
+        model = RLVN(L, H, Q, 1 / Fs, bo_link)
+        alpha, W, C = ou.decode_alpha_weights_coefficients(awc, L, H, Q, bo_link)
+        print(alpha, W, C)
+        
+        model.set_connection_weights(W)
+        model.set_polynomial_coefficients(C)
+        
+        pred_test_out = model.predict(test_in, alpha)
+        cost = ou.NMSE(test_out, pred_test_out, alpha)
+        awc_cost_history_test.append(cost)
+    
+    # 
+    ar_test_costs.append(ar_cost_history_test)
+    aw_test_costs.append(aw_cost_history_test)
+    awc_test_costs.append(awc_cost_history_test)
+    
 
-ar_avg_history = np.sum(ar_costs, axis=0) / ntimes
-aw_avg_history = np.sum(aw_costs, axis=0) / ntimes
-awc_avg_history = np.sum(awc_costs, axis=0) / ntimes
+# Train cost history
+ar_avg_train_history = np.sum(ar_train_costs, axis=0) / ntimes
+aw_avg_train_history = np.sum(aw_train_costs, axis=0) / ntimes
+awc_avg_train_history = np.sum(awc_train_costs, axis=0) / ntimes
 
-print(f'ACOr AR {np.shape(ar_avg_history)} {ar_avg_history})')
-print(f'ACOr AW {np.shape(aw_avg_history)} {aw_avg_history}')
-print(f'ACOr AWC {np.shape(awc_avg_history)} {awc_avg_history}')
+print('[TRAIN]')
+print(f'ACOr AR {np.shape(ar_avg_train_history)} {ar_avg_train_history}')
+print(f'ACOr AW {np.shape(aw_avg_train_history)} {aw_avg_train_history}')
+print(f'ACOr AWC {np.shape(awc_avg_train_history)} {awc_avg_train_history}')
+
+# Test cost history
+ar_avg_test_history = np.sum(ar_test_costs, axis=0) / ntimes
+aw_avg_test_history = np.sum(aw_test_costs, axis=0) / ntimes
+awc_avg_test_history = np.sum(awc_test_costs, axis=0) / ntimes
+
+print('[TEST]')
+print(f'ACOr AR {np.shape(ar_avg_test_history)} {ar_avg_test_history}')
+print(f'ACOr AW {np.shape(aw_avg_test_history)} {aw_avg_test_history}')
+print(f'ACOr AWC {np.shape(awc_avg_test_history)} {awc_avg_test_history}')
