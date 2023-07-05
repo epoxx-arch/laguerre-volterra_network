@@ -22,19 +22,21 @@ import csv
 # import simulated_systems
 # import optimization_utilities
 
-# # Write a given LVN structure and system into a file 
-# def write_LVN_file(file_name, system_parameters):
-    # print(system_parameters)
-    # L = len(system_parameters[1][0])
-    # H = len(system_parameters[1])
-    # Q = len(system_parameters[2][0])
-    # system_file_name = file_name + "_system.LVN"
-    # with open(system_file_name, mode = 'w', newline='') as file:
-        # writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        # writer.writerow([L, H, Q])
-        # for parameters in system_parameters:
-            # writer.writerow((np.array(parameters)).flatten())
+# Write a given LVN structure and system into a file 
+def write_LVN_file(file_name, system_parameters, L, H, Q, bo_link, Fs):    
+    alpha = system_parameters['alpha']
+    W = system_parameters['W']
+    C = system_parameters['C']
     
+    system_file_name = file_name + "_system.LVN"
+    
+    with open(system_file_name, mode = 'w', newline='') as file:
+        writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        writer.writerow([L, H, Q, bo_link, Fs])
+        
+        writer.writerow([alpha])
+        writer.writerow(W.flatten())
+        writer.writerow(C)
     
 # # Reads LVN file and returns the system's parameters
 # def read_LVN_file(file_name):
