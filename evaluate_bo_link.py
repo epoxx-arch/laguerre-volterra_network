@@ -17,7 +17,7 @@
 
 # Own
 from data_handling import read_io
-from reservoir_laguerre_volterra_network_structure import RLVN
+from laguerre_volterra_network import LVN
 import optimization_utilities
 # Pyython std library
 import math
@@ -62,8 +62,6 @@ if l2_regularization:
 random_weights = optimization_utilities.randomize_weights(wrange, L, H)
 print(f'(L,H,Q) = ({L},{H},{Q})')
 
-# RLVN with H maps from filter bank to hidden layer (same as original LVN)
-
 # Without bank-output link
 bo_link = False
 bo_false_train_errors = []
@@ -71,7 +69,7 @@ bo_false_test_errors = []
 
 for _ in range(ntimes):
     # Define model parameters and set connection weights as random numbers
-    model = RLVN(L, H, Q, 1 / Fs, bo_link)
+    model = LVN(L, H, Q, 1 / Fs, bo_link)
     model.set_connection_weights(random_weights)
     
     #
@@ -96,7 +94,7 @@ bo_true_test_errors = []
 
 for _ in range(ntimes):
     # Define model parameters and set connection weights as random numbers
-    model = RLVN(L, H, Q, 1 / Fs, bo_link)
+    model = LVN(L, H, Q, 1 / Fs, bo_link)
     model.set_connection_weights(random_weights)
     
     #

@@ -21,8 +21,8 @@ import numpy as np
 import math
 from collections.abc import Iterable
 
-class RLVN:
-    ''' Reservoir Laguerre-Volterra network '''
+class LVN:
+    ''' The Laguerre-Volterra Network structure is independent from optimization strategies '''
     
     def __init__(self, laguerre_order, num_hidden_units, polynomial_order, sampling_interval, bo_link):
         ''' Constructor '''
@@ -118,7 +118,7 @@ class RLVN:
         N = len(signal)
         laguerre_outputs = self.propagate_laguerre_filterbank(signal, alpha)
         
-        # The input of each hidden node at some moment is the dot product between a random vector and the outputs of the Laguerre bank
+        # The input of each hidden node at some moment is the dot product between a weight vector and the outputs of the Laguerre bank
         # Hidden nodes input matrix is (N,H)  
         hidden_nodes_in = laguerre_outputs.T @ self.connection_weights 
         

@@ -20,7 +20,7 @@ import math
 # Third party
 import numpy as np
 # Own
-from reservoir_laguerre_volterra_network_structure import RLVN
+from laguerre_volterra_network import LVN
 
 # Simulate Laguerre-Volterra Network of arbitrary structure with randomized parameters
 # Returns output signal and the parameters used, so that the same parameters can be used with the test set
@@ -40,7 +40,7 @@ def simulate_LVN_random_parameters(input_signal, L, H, Q, Fs, bo_link):
         C = np.random.rand(H * Q  + 1)
     
     #
-    system = RLVN(L, H, Q, 1 / Fs, bo_link)
+    system = LVN(L, H, Q, 1 / Fs, bo_link)
     system.set_connection_weights(W)
     system.set_polynomial_coefficients(C)
     

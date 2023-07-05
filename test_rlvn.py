@@ -17,7 +17,7 @@
 
 # Own
 from data_handling import read_io
-from reservoir_laguerre_volterra_network_structure import RLVN
+from laguerre_volterra_network import LVN
 import optimization_utilities as ou
 # Pyython std library
 import math
@@ -55,7 +55,7 @@ solution = [alpha, wrange]
 alpha, wrange = ou.decode_alpha_range(solution)
 print(f'TEST: alpha is {alpha} and wrange is {wrange}')
 
-model = RLVN(L, H, Q, 1 / Fs, bo_link)
+model = LVN(L, H, Q, 1 / Fs, bo_link)
 random_weights = ou.randomize_weights(wrange, L, H)
 model.set_connection_weights(random_weights)
 #
@@ -81,7 +81,7 @@ solution = [alpha] + W
 alpha, W = ou.decode_alpha_weights(solution, L, H)
 print(f'TEST: alpha is {alpha} and W is {W}')
 
-model = RLVN(L, H, Q, 1 / Fs, bo_link)
+model = LVN(L, H, Q, 1 / Fs, bo_link)
 model.set_connection_weights(W)
 #
 poly_coefficients = ou.train_poly_least_squares(model,
@@ -105,7 +105,7 @@ solution = [alpha] + W + C
 alpha, W, C = ou.decode_alpha_weights_coefficients(solution, L, H, Q, bo_link)
 print(f'TEST: alpha is {alpha}, W is {W} and C is {C}')
 
-model = RLVN(L, H, Q, 1 / Fs, bo_link)
+model = LVN(L, H, Q, 1 / Fs, bo_link)
 model.set_connection_weights(W)
 model.set_polynomial_coefficients(C)
 #
@@ -126,7 +126,7 @@ print(solution)
 alpha, W, C = ou.decode_alpha_weights_coefficients(solution, L, H, Q, bo_link)
 print(f'TEST: alpha is {alpha}, W is {W} and C is {C}')
 
-model = RLVN(L, H, Q, 1 / Fs, bo_link)
+model = LVN(L, H, Q, 1 / Fs, bo_link)
 model.set_connection_weights(W)
 model.set_polynomial_coefficients(C)
 #

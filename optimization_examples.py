@@ -16,7 +16,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Own
-from reservoir_laguerre_volterra_network_structure import RLVN
+from laguerre_volterra_network import LVN
 import optimization_utilities as ou
 from data_handling import read_io
 ## MH
@@ -173,7 +173,7 @@ for _ in range(ntimes):
         
         # AR strategy
         print('AR')
-        model = RLVN(L, H, Q, 1 / Fs, bo_link)
+        model = LVN(L, H, Q, 1 / Fs, bo_link)
         
         alpha, range = ou.decode_alpha_range(ar)
         print(alpha, range)
@@ -190,7 +190,7 @@ for _ in range(ntimes):
         
         # AW strategy
         print('AW')
-        model = RLVN(L, H, Q, 1 / Fs, bo_link)
+        model = LVN(L, H, Q, 1 / Fs, bo_link)
         
         alpha, W = ou.decode_alpha_weights(aw, L, H)
         print(alpha, W)
@@ -205,7 +205,7 @@ for _ in range(ntimes):
         
         # AWC strategy
         print('AWC')
-        model = RLVN(L, H, Q, 1 / Fs, bo_link)
+        model = LVN(L, H, Q, 1 / Fs, bo_link)
         alpha, W, C = ou.decode_alpha_weights_coefficients(awc, L, H, Q, bo_link)
         print(alpha, W, C)
         

@@ -18,7 +18,7 @@
 
 # Own
 import data_handling
-from reservoir_laguerre_volterra_network_structure import RLVN
+from laguerre_volterra_network import LVN
 # 3rd party
 import numpy as np
 # Pyython std library
@@ -33,7 +33,6 @@ def laguerre_filter_memory(alpha):
     
     return M
 
-    
 # Normalized mean squared error
 def NMSE(y, y_pred, alpha):
     if len(y) != len(y_pred):
@@ -87,10 +86,9 @@ def decode_alpha_weights(candidate_solution, L, H):
     alpha = candidate_solution[0]
     flat_W = candidate_solution[1 : (H * L + 1)]
     
-    # unflatten W and C
+    # unflatten W
     W = []
-    # for hidden_unit in range(H):
-        # W.append( flat_W[hidden_unit * L : (hidden_unit + 1) * L] )
+
     for bank_out in range(L):
         W.append( flat_W[bank_out * H : (bank_out + 1) * H] )
         
@@ -124,7 +122,7 @@ def randomize_weights(weights_range, L, H):
         print('Error, range must be a scalar')
         exit(-1)
     if weights_range == 0:
-        print('Error range must be nonzero')
+        print('Error, range must be nonzero')
         exit(-1)
 
     # L and H define the 
@@ -166,10 +164,8 @@ def train_poly_least_squares(rlvn_model, in_signal, out_signal, alpha):
         diagonal_ridge[0,0] = 0           
         poly_coefficients, _, _, _ = np.linalg.lstsq(enhanced_input.T @ enhanced_input + diagonal_ridge,
                                            enhanced_input.T @ out_signal, rcond=None)
-        
-        #poly_coefficients, _, rank, _ = np.linalg.lstsq(enhanced_input, out_signal, rcond=None)
     else:
-        #poly_coefficients = np.linalg.pinv(enhanced_input.T @  ) @ out_signal
+        # poly_coefficients = np.linalg.pinv(enhanced_input) @ out_signal
         poly_coefficients, _, _, _ = np.linalg.lstsq(enhanced_input, out_signal, rcond=None)
    
     return poly_coefficients  
@@ -209,8 +205,8 @@ def define_cost(solution_encoding, L, H, Q, bo_link, Fs, train_filename):
             
             exit(-1)
         
-        # RLVN model
-        candidate_model = RLVN(L, H, Q, 1 / Fs, bo_link)
+        # LVN model
+        candidate_model = LVN(L, H, Q, 1 / Fs, bo_link)
         
         # Get parameters from candidate solution, depending on the solution encoding scheme
         ## In solution encoding 0, weights are randomized and
@@ -234,7 +230,7 @@ def define_cost(solution_encoding, L, H, Q, bo_link, Fs, train_filename):
             # print(f'TEST: alpha is {alpha}, W is {W},  C is {C}')
         
         # Feed weights to the model
-        candidate_model.set_connection_weights(W)        
+        candidate_model.set_connection_weights(W)
         
         # Define C as least-squares solution for the matrix formulation
         if solution_encoding == 0 or solution_encoding == 1:
