@@ -28,7 +28,7 @@ class LVN:
         ''' Constructor '''
         
         # Sanity check
-        if any([(not(isinstance(param,int)) or param <= 0) for param in [laguerre_order, num_hidden_units, polynomial_order]]):
+        if any([param <= 0 for param in [laguerre_order, num_hidden_units, polynomial_order]]):
             print('Error, structural parameters (L, H and Q) must be positive integers.')
             exit(-1)
         if sampling_interval <= 0:
@@ -39,10 +39,10 @@ class LVN:
             exit(-1)
         
         # Structural parameters
-        self.L = laguerre_order         # laguerre order
-        self.H = num_hidden_units       # number of hidden units
-        self.Q = polynomial_order       # polynomial order
-        self.T = sampling_interval      # sampling interval
+        self.L = int(laguerre_order)        # laguerre order
+        self.H = int(num_hidden_units)      # number of hidden units
+        self.Q = int(polynomial_order)      # polynomial order
+        self.T = sampling_interval          # sampling interval
         
         # Flag to define if the network will either implement the poly linear terms
         #  or a direct connection betwen filterbank and output
