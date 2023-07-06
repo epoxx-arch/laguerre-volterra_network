@@ -19,8 +19,8 @@
 import numpy as np
 import csv
 # Own
-# import simulated_systems
-# import optimization_utilities
+import simulated_systems
+import optimization_utilities as ou
 
 # Write a given LVN structure and system into a file 
 def write_LVN_file(file_name, system_parameters, L, H, Q, bo_link, Fs):    
@@ -28,35 +28,36 @@ def write_LVN_file(file_name, system_parameters, L, H, Q, bo_link, Fs):
     W = system_parameters['W']
     C = system_parameters['C']
     
-    system_file_name = file_name + "_system.LVN"
-    
-    with open(system_file_name, mode = 'w', newline='') as file:
+    with open(file_name, mode = 'w', newline='') as file:
         writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow([L, H, Q, bo_link, Fs])
-        
+        writer.writerow([L, H, Q, Fs])
+        writer.writerow([bo_link])
+       
         writer.writerow([alpha])
         writer.writerow(W.flatten())
         writer.writerow(C)
     
-# # Reads LVN file and returns the system's parameters
-# def read_LVN_file(file_name):
-    # with open(file_name, mode = 'r', newline='') as file:
-        # csv_reader = csv.reader(file, delimiter=',')
-        # csv_strings = []
-        # for row in csv_reader:
-            # csv_strings.append(row)
+# Reads LVN file and returns the system's parameters
+def read_LVN_file(file_name):
+    with open(file_name, mode = 'r', newline='') as file:
+        csv_reader = csv.reader(file, delimiter=',')
+        csv_strings = []
+        for row in csv_reader:
+            csv_strings.append(row)
         
-        # L, H, Q   = list( np.array(csv_strings[0]).astype(np.int) )
+        L, H, Q, Fs = list(np.array(csv_strings[0]).astype(int))
+        print(type(L))
         
-        # alpha       = float(csv_strings[1][0])
-        # flat_W      = list( np.array(csv_strings[2]).astype(np.float) )
-        # flat_C      = list( np.array(csv_strings[3]).astype(np.float) )
-        # offset      = float(csv_strings[4][0])
+        bo_link = eval(csv_strings[1][0])
         
-        # concatenated_parameters = [alpha] + flat_W + flat_C + [offset]
-        # alpha, W, C, offset = optimization_utilities.decode_solution(concatenated_parameters, L, H, Q)
+        alpha = float(csv_strings[2][0])
+        flat_W = list(np.array(csv_strings[3]).astype(float))
+        flat_C = list(np.array(csv_strings[4]).astype(float))
         
-        # return alpha, W, C, offset
+        concatenated_parameters = [alpha] + flat_W + flat_C
+        alpha, W, C = ou.decode_alpha_weights_coefficients(concatenated_parameters, L, H, Q, bo_link)
+        
+        return alpha, W, C, L, H, Q, Fs, bo_link
         
         
 # # Generate IO data using a Gaussian White Noise (GWN) signal as input to enable the system to capture dynamics of frequency cross-terms, adding GWN to output to reach a certain SNR
