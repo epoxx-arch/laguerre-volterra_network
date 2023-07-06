@@ -25,23 +25,19 @@ import sys
 # 3rd party
 import numpy as np
 
-if len(sys.argv) != 3:
-    print('Error, use as ' + sys.argv[0] + ' \'short\'|\'long\ \'finite\'|\'infinite\'')
+if len(sys.argv) != 2:
+    print('Error, use as ' + sys.argv[0] + '\'finite\'|\'infinite\'')
     exit(-1)
     
-data_size = (sys.argv[1]).lower()
 data_order = (sys.argv[2]).lower()
-if data_size != 'short' and data_size != 'long':
-    print('Error, size must be \'short\' or \'long\'')
-    exit(-1)
 if data_order != 'finite' and data_order != 'infinite':
-    print('Erro r, order must be \'finite\' or \'infinite\'')
+    print('Error, order must be \'finite\' or \'infinite\'')
     exit(-1)    
     
-print(f'Size = {data_size}, order = {data_order}')
+print(f'Order = {data_order}')
     
-train_in, train_out = read_io('./signals_and_systems/' + data_size + '_' + data_order + '_train.csv')
-test_in, test_out   = read_io('./signals_and_systems/' + data_size + '_' + data_order + '_test.csv')
+train_in, train_out = read_io('./signals_and_systems/' + data_order + 'order_train.csv')
+test_in, test_out   = read_io('./signals_and_systems/' + data_order + 'order_test.csv')
 
 ## Configs
 # Structure

@@ -30,8 +30,8 @@ import sys
 import numpy as np
 
 #
-train_filename = './signals_and_systems/short_finite_train.csv'
-test_filename = './signals_and_systems/short_finite_test.csv'
+train_filename = './signals_and_systems/infinite_order_train.csv'
+test_filename = './signals_and_systems/infinite_order_test.csv'
 train_in, train_out = read_io(train_filename)
 test_in, test_out = read_io(test_filename)
 
@@ -172,11 +172,10 @@ for _ in range(ntimes):
     for ar, aw, awc in zip(ar_solutions, aw_solutions, awc_solutions):
         
         # AR strategy
-        print('AR')
+        # print('AR')
         model = LVN(L, H, Q, 1 / Fs, bo_link)
-        
         alpha, range = ou.decode_alpha_range(ar)
-        print(alpha, range)
+        # print(alpha, range)
         
         W = ou.randomize_weights(range, L, H)
         model.set_connection_weights(W)
@@ -189,11 +188,10 @@ for _ in range(ntimes):
         ar_cost_history_test.append(cost)
         
         # AW strategy
-        print('AW')
+        # print('AW')
         model = LVN(L, H, Q, 1 / Fs, bo_link)
-        
         alpha, W = ou.decode_alpha_weights(aw, L, H)
-        print(alpha, W)
+        # print(alpha, W)
         
         model.set_connection_weights(W)
         C = ou.train_poly_least_squares(model, train_in, train_out, alpha)
@@ -204,10 +202,10 @@ for _ in range(ntimes):
         aw_cost_history_test.append(cost)
         
         # AWC strategy
-        print('AWC')
+        # print('AWC')
         model = LVN(L, H, Q, 1 / Fs, bo_link)
         alpha, W, C = ou.decode_alpha_weights_coefficients(awc, L, H, Q, bo_link)
-        print(alpha, W, C)
+        # print(alpha, W, C)
         
         model.set_connection_weights(W)
         model.set_polynomial_coefficients(C)

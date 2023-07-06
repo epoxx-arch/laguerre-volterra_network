@@ -17,11 +17,11 @@
 
 import data_handling
 
-## Generate train and test data
+## Generate train and test data with 2 minutes each, considering a 25 Hz sampling rate
 # Finite-order system
-train_system_parameters = data_handling.generate_io("lvn", 1024, "finite_order_train", None)
-data_handling.generate_io("lvn", 2048, "finite_order_test", train_system_parameters)
+train_system_parameters = data_handling.generate_io("lvn", 3000, "finite_order_train", None)
+data_handling.generate_io("lvn", 3000, "finite_order_test", train_system_parameters)
 
 # Infinite-order system
-train_alphas = data_handling.generate_io("cascade", 1024, "infinite_order_train", None)
-data_handling.generate_io("cascade", 1024, "infinite_order_test", train_alphas)
+train_betas = data_handling.generate_io("cascade", 3000, "infinite_order_train", None)
+data_handling.generate_io("cascade", 3000, "infinite_order_test", train_betas)

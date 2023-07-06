@@ -26,7 +26,7 @@ import sys
 import numpy as np
 
 # PADRONIZAR NOMES DE ARQUIVOS
-train_filename = './signals_and_systems/short_finite_train.csv'
+train_filename = './signals_and_systems/finite_order_train.csv'
 train_in, train_out = read_io(train_filename)
 
 # print(f'Train len: {len(train_in)}  Test len: {len(test_in)}')
@@ -37,7 +37,6 @@ train_in, train_out = read_io(train_filename)
 L = 3; H = 2; Q = 2
 print(f'(L,H,Q) = ({L},{H},{Q})')
 Fs = 25
-
 
 # Define and evaluate models for all three solution coding schemes of the cost functions
 #   For solution_encoding = 2: Optimize alphas, weights and coefficients
@@ -67,7 +66,7 @@ model_train_out = model.predict(train_in, alpha)
 nmse_train = ou.NMSE(train_out, model_train_out, alpha)
 
 print(f'Train NMSE [0] : {nmse_train}')
-# print(f'Test NMSE [0]: {nmse_train}')
+# print(f'Test NMSE [0]: {nmse_test}')
 
 
 # Define model given ALPHA and WEIGHTS

@@ -56,7 +56,7 @@ def simulate_LVN_random_parameters(input_signal, L, H, Q, Fs, bo_link):
     
 
 # Simulate LVN of arbitrary structure with deterministic parameters, and return output signal
-def simulate_LVN_deterministic(input_signal, L, H, Q, Fs, bo_link, parameters):
+def simulate_LVN_deterministic_parameters(input_signal, L, H, Q, Fs, bo_link, parameters):
     alpha = parameters['alpha']
     W = parameters['W']
     C = parameters['C']
