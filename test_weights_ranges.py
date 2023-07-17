@@ -48,143 +48,79 @@ print(f'(L,H,Q) = ({L},{H},{Q})')
 encoding_scheme = 1
 cost_alpha_weights = ou.define_cost(encoding_scheme, L, H, Q, bo_link, Fs, train_filename)
 
-# Setup metaheuristics
-## Parameters to be optimized
-alpha_min   = 1e-5;     alpha_max   = 0.9   # estimated lag with alpha = 0.9 is 263
-weight_min0  = -1e-5;   weight_max0  = 1e-5
-weight_min1  = -1;      weight_max1  = 1
-weight_min2  = -1e5;    weight_max2  = 1e5
-
-# Define the ranges to be used in random initialization of algorithms for each variable,
-#  along with which variables are bounded by these ranges during the optimization
-aw_ranges0 = []
-aw_ranges1 = []
-aw_ranges2 = []
-aw_bounding = []
-
-# Alpha variable is bounded
-aw_ranges0.append([alpha_min, alpha_max])
-aw_ranges1.append([alpha_min, alpha_max])
-aw_ranges2.append([alpha_min, alpha_max])
-aw_bounding.append(True)
-
-# Hidden units input weights are forcedly bounded by l2-normalization (normalization to unit Euclidean norm)
-for _ in range(L * H): 
-    aw_ranges0.append([weight_min0, weight_max0])
-    aw_ranges1.append([weight_min1, weight_max1])
-    aw_ranges2.append([weight_min2, weight_max2])
-    aw_bounding.append(False)
-
-# Optimization
-function_evals = [100, 150, 200, 250, 300]
+# Optimization parameters
+function_evals = [100, 150, 200]
 ntimes = 30
-#
-aw0_train_costs = []
-aw1_train_costs = []
-aw2_train_costs = []
-aw0_test_costs = []
-aw1_test_costs = []
-aw2_test_costs = []
-
-# ACOr shared params
 solution_encoding = 1
 m = 5; k = 50; q = 0.01; xi = 0.85
 
-# Ant Colony Optimization [wrange: +- 1e-5]
-ACOr_aw0 = ant_colony_for_continuous_domains.ACOr()
-ACOr_aw0.set_verbosity(False)
-ACOr_aw0.set_cost(ou.define_cost(solution_encoding, L, H, Q, bo_link, Fs, train_filename))
-ACOr_aw0.set_parameters(m, k, q, xi, function_evals)
-ACOr_aw0.define_variables(aw_ranges0, aw_bounding)
+# Setup metaheuristics
+## Parameters to be optimized
+alpha_min   = 1e-5;     alpha_max   = 0.9   # estimated lag with alpha = 0.9 is 263
 
-# Ant Colony Optimization [wrange: +- 1]
-ACOr_aw1 = ant_colony_for_continuous_domains.ACOr()
-ACOr_aw1.set_verbosity(False)
-ACOr_aw1.set_cost(ou.define_cost(solution_encoding, L, H, Q, bo_link, Fs, train_filename))
-ACOr_aw1.set_parameters(m, k, q, xi, function_evals)
-ACOr_aw1.define_variables(aw_ranges1, aw_bounding)
+# 
+weights_ranges = [1e-5, 1, 1e5]
+acor_optimizers = []
 
-# Ant Colony Optimization [wrange: +- 1e5]
-ACOr_aw2 = ant_colony_for_continuous_domains.ACOr()
-ACOr_aw2.set_verbosity(False)
-ACOr_aw2.set_cost(ou.define_cost(solution_encoding, L, H, Q, bo_link, Fs, train_filename))
-ACOr_aw2.set_parameters(m, k, q, xi, function_evals)
-ACOr_aw2.define_variables(aw_ranges2, aw_bounding)
-
-#
-for _ in range(ntimes):
-    # Train
-    ## [wrange: +- 1e-5]
-    aw0_solutions = ACOr_aw0.optimize()
-    aw0_cost_history = (np.array(aw0_solutions))[:, -1]
-    aw0_train_costs.append(aw0_cost_history)
-    ## [wrange: +- 1]
-    aw1_solutions = ACOr_aw1.optimize()
-    aw1_cost_history = (np.array(aw1_solutions))[:, -1]
-    aw1_train_costs.append(aw1_cost_history)
-    ## [wrange: +- 1e5]
-    aw2_solutions = ACOr_aw2.optimize()
-    aw2_cost_history = (np.array(aw2_solutions))[:, -1]
-    aw2_train_costs.append(aw2_cost_history)
-    # 
-    aw0_cost_history_test = []
-    aw1_cost_history_test = []
-    aw2_cost_history_test = []
+# Define one optimizer for each item in weights_ranges
+for wrange in weights_ranges:
+    weight_max = wrange
+    weight_min = wrange * -1
     
-    # Test
-    for aw0, aw1, aw2 in zip(aw0_solutions, aw1_solutions, aw2_solutions):
-        # AW0
-        model = LVN(L, H, Q, 1 / Fs, bo_link)
-        alpha, W = ou.decode_alpha_weights(aw0, L, H)
-        model.set_connection_weights(W)
-        C = ou.train_poly_least_squares(model, train_in, train_out, alpha)
-        model.set_polynomial_coefficients(C)
-        pred_test_out = model.predict(test_in, alpha)
-        cost = ou.NMSE(test_out, pred_test_out, alpha)
-        aw0_cost_history_test.append(cost)
-        
-        # AW1
-        model = LVN(L, H, Q, 1 / Fs, bo_link)
-        alpha, W = ou.decode_alpha_weights(aw1, L, H)
-        model.set_connection_weights(W)
-        C = ou.train_poly_least_squares(model, train_in, train_out, alpha)
-        model.set_polynomial_coefficients(C)
-        pred_test_out = model.predict(test_in, alpha)
-        cost = ou.NMSE(test_out, pred_test_out, alpha)
-        aw1_cost_history_test.append(cost)
-        
-        # AW2
-        model = LVN(L, H, Q, 1 / Fs, bo_link)
-        alpha, W = ou.decode_alpha_weights(aw2, L, H)
-        model.set_connection_weights(W)
-        C = ou.train_poly_least_squares(model, train_in, train_out, alpha)
-        model.set_polynomial_coefficients(C)
-        pred_test_out = model.predict(test_in, alpha)
-        cost = ou.NMSE(test_out, pred_test_out, alpha)
-        aw2_cost_history_test.append(cost)
+    optimization_ranges = []
+    optimization_bounding = []
+    
+    # Alpha
+    optimization_ranges.append([alpha_min, alpha_max])
+    optimization_bounding.append(True)
+    
+    # Hidden units weights
+    for _ in range(L*H):
+        optimization_ranges.append([weight_min, weight_max])
+        optimization_bounding.append(False)
     
     # 
-    aw0_test_costs.append(aw0_cost_history_test)
-    aw1_test_costs.append(aw1_cost_history_test)
-    aw2_test_costs.append(aw2_cost_history_test)
+    train_costs = []
+    test_costs = []
     
+    ACOr_aw = ant_colony_for_continuous_domains.ACOr()
+    ACOr_aw.set_verbosity(False)
+    ACOr_aw.set_cost(ou.define_cost(solution_encoding, L, H, Q, bo_link, Fs, train_filename))
+    ACOr_aw.set_parameters(m, k, q, xi, function_evals)
+    ACOr_aw.define_variables(optimization_ranges, optimization_bounding)
 
-# Train cost history
-aw0_avg_train_history = np.sum(aw0_train_costs, axis=0) / ntimes
-aw1_avg_train_history = np.sum(aw1_train_costs, axis=0) / ntimes
-aw2_avg_train_history = np.sum(aw2_train_costs, axis=0) / ntimes
+    for _ in range(ntimes):
+        # Train
+        aw_solutions = ACOr_aw.optimize()
+        aw_cost_history = (np.array(aw_solutions))[:, -1]
+        train_costs.append(aw_cost_history)
+        
+        # 
+        aw_cost_history_test = []
+        
+        # Test
+        for aw in aw_solutions:
+            # 
+            model = LVN(L, H, Q, 1 / Fs, bo_link)
+            alpha, W = ou.decode_alpha_weights(aw, L, H)
+            model.set_connection_weights(W)
+            C = ou.train_poly_least_squares(model, train_in, train_out, alpha)
+            model.set_polynomial_coefficients(C)
+            pred_test_out = model.predict(test_in, alpha)
+            cost = ou.NMSE(test_out, pred_test_out, alpha)
+            aw_cost_history_test.append(cost)
+            
+        
+        # 
+        test_costs.append(aw_cost_history_test)
+        
+    # Train cost history
+    avg_train_history = np.sum(train_costs, axis=0) / ntimes
+    
+    # Test cost history
+    avg_test_history = np.sum(test_costs, axis=0) / ntimes
+    
+    print(f'WRanges = [{wrange}, {wrange * -1}]')
+    print(f'[TRAIN] {np.shape(avg_train_history)} {avg_train_history}')
+    print(f'[TEST] {np.shape(avg_test_history)} {avg_test_history}')
 
-# Test cost history
-aw0_avg_test_history = np.sum(aw0_test_costs, axis=0) / ntimes
-aw1_avg_test_history = np.sum(aw1_test_costs, axis=0) / ntimes
-aw2_avg_test_history = np.sum(aw2_test_costs, axis=0) / ntimes
-
-print('[TRAIN]')
-print(f'ACOr AW0 {np.shape(aw0_avg_train_history)} {aw0_avg_train_history}')
-print(f'ACOr AW1 {np.shape(aw1_avg_train_history)} {aw1_avg_train_history}')
-print(f'ACOr AW2 {np.shape(aw2_avg_train_history)} {aw2_avg_train_history}')
-
-print('[TEST]')
-print(f'ACOr AW0 {np.shape(aw0_avg_test_history)} {aw0_avg_test_history}')
-print(f'ACOr AW1 {np.shape(aw1_avg_test_history)} {aw1_avg_test_history}')
-print(f'ACOr AW2 {np.shape(aw2_avg_test_history)} {aw2_avg_test_history}')
