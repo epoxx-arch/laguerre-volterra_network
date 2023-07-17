@@ -49,7 +49,7 @@ encoding_scheme = 1
 cost_alpha_weights = ou.define_cost(encoding_scheme, L, H, Q, bo_link, Fs, train_filename)
 
 # Optimization parameters
-function_evals = [100, 150, 200]
+function_evals = [100, 150, 200, 250, 300]
 ntimes = 30
 solution_encoding = 1
 m = 5; k = 50; q = 0.01; xi = 0.85
@@ -59,8 +59,17 @@ m = 5; k = 50; q = 0.01; xi = 0.85
 alpha_min   = 1e-5;     alpha_max   = 0.9   # estimated lag with alpha = 0.9 is 263
 
 # 
-weights_ranges = [1e-5, 1, 1e5]
+# weights_ranges = [1e-5, 1, 1e5]
+
+# Evaluate ranges from 2**-15 to 2**15 in geometric progression, or linear progression in the log2 scale
+prog_start = 2**-15
+prog_ratio = 2
+prog_n = 31
+weights_ranges = [prog_start * (prog_ratio ** i) for i in range(prog_n)]
+
 acor_optimizers = []
+last_train_costs = []
+last_test_costs = []
 
 # Define one optimizer for each item in weights_ranges
 for wrange in weights_ranges:
@@ -78,27 +87,24 @@ for wrange in weights_ranges:
     for _ in range(L*H):
         optimization_ranges.append([weight_min, weight_max])
         optimization_bounding.append(False)
-    
-    # 
-    train_costs = []
-    test_costs = []
-    
+        
     ACOr_aw = ant_colony_for_continuous_domains.ACOr()
     ACOr_aw.set_verbosity(False)
     ACOr_aw.set_cost(ou.define_cost(solution_encoding, L, H, Q, bo_link, Fs, train_filename))
     ACOr_aw.set_parameters(m, k, q, xi, function_evals)
     ACOr_aw.define_variables(optimization_ranges, optimization_bounding)
-
+    
+    # Optimize for given weight ranges
+    train_costs = []
+    test_costs = []
     for _ in range(ntimes):
         # Train
         aw_solutions = ACOr_aw.optimize()
         aw_cost_history = (np.array(aw_solutions))[:, -1]
         train_costs.append(aw_cost_history)
         
-        # 
-        aw_cost_history_test = []
-        
         # Test
+        aw_cost_history_test = []
         for aw in aw_solutions:
             # 
             model = LVN(L, H, Q, 1 / Fs, bo_link)
@@ -109,18 +115,21 @@ for wrange in weights_ranges:
             pred_test_out = model.predict(test_in, alpha)
             cost = ou.NMSE(test_out, pred_test_out, alpha)
             aw_cost_history_test.append(cost)
-            
         
         # 
         test_costs.append(aw_cost_history_test)
         
     # Train cost history
     avg_train_history = np.sum(train_costs, axis=0) / ntimes
+    last_train_costs.append(avg_train_history[-1])
     
     # Test cost history
     avg_test_history = np.sum(test_costs, axis=0) / ntimes
+    last_test_costs.append(avg_test_history[-1])
     
     print(f'WRanges = [{wrange}, {wrange * -1}]')
     print(f'[TRAIN] {np.shape(avg_train_history)} {avg_train_history}')
     print(f'[TEST] {np.shape(avg_test_history)} {avg_test_history}')
 
+np.save('wrange_train_costs.npy', last_train_costs)
+np.save('wrange_test_costs.npy', last_test_costs)
