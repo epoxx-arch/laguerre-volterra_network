@@ -131,5 +131,5 @@ for wrange in weights_ranges:
     print(f'[TRAIN] {np.shape(avg_train_history)} {avg_train_history}')
     print(f'[TEST] {np.shape(avg_test_history)} {avg_test_history}')
 
-np.save('wrange_train_costs.npy', last_train_costs)
-np.save('wrange_test_costs.npy', last_test_costs)
+np.save('wrange_infinite_train_costs.npy', last_train_costs)
+np.save('wrange_infinite_test_costs.npy', last_test_costs)
