@@ -84,7 +84,7 @@ aw_bounding.append(True)
 ar_ranges.append([alpha_min, alpha_max])
 ar_bounding.append(True)
 
-# Hidden units input weights are forcedly bounded by l2-normalization (normalization to unit Euclidean norm)
+# Hidden units input weights
 for _ in range(L * H): 
     awc_ranges.append([weight_min, weight_max])
     awc_bounding.append(False)
