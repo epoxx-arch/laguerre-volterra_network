@@ -37,7 +37,7 @@ plt.rc('figure', titlesize=BIGGER_SIZE+2)  # fontsize of the figure title
 finite_train = np.load('data/wrange_finite_train_costs.npy')
 finite_test = np.load('data/wrange_finite_test_costs.npy')
 infinite_train = np.load('data/wrange_infinite_train_costs.npy')
-infinite_test = np.load('data/wrange_finite_test_costs.npy')
+infinite_test = np.load('data/wrange_infinite_test_costs.npy')
 
 # Geometric progression of ranges (x axis)
 prog_start = 2**-15
