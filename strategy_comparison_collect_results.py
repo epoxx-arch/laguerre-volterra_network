@@ -40,14 +40,14 @@ if order_str != 'finite' and order_str != 'infinite':
 
 optimization_strategy = sys.argv[2] 
 if optimization_strategy != '0' and optimization_strategy != '1' and optimization_strategy != '2':
-    print('Error, choose either \'1\' or \'2\' for the simulated system order')
+    print('Error, choose either \'0\' or \'1\' or \'2\' for the simulated system order')
     exit(-1)
 
 # Optimization strategies:
 # [0] Define fitness used to optimize ALPHA and RANGE of random weights
-## Weights are randomized and polynomial coefficients are computed as a LSTSQ solution
+## Weights are randomized and polynomial coefficients are computed as a least-squares solution
 # [1] Define fitness used to optimize ALPHA and W
-## Polynomial coefficients are computed as a LSTSQ solution
+## Polynomial coefficients are computed as a least-squares solution
 # [2] Define fitness used to optimize ALPHA, W and C
 optimization_strategy = int(optimization_strategy)
 
@@ -76,8 +76,8 @@ print(f'(L,H,Q) = ({L},{H},{Q})')
 # Setup metaheuristics
 ## Parameters to be optimized
 alpha_min   = 1e-5; alpha_max   = 0.9   # estimated lag with alpha = 0.9 is 263
-weight_min  = -1;   weight_max  = 1
 wrange_min  = 0.5;  wrange_max  = 128   # Based on previous weights ranges analysis (weights_ranges_tests.py) 
+weight_min  = -1;   weight_max  = 1
 coef_min    = -1;   coef_max    = 1
 
 # Define the ranges to be used in random initialization of algorithms for each variable,
