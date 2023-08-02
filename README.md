@@ -9,13 +9,13 @@ It also implements a comparison between different strategies to train LVNs.
 
 ### Those strategies are:
 
-[Strategy 0] Optimize ALPHA and RANGE of random weights w/ metaheuristics
+[Strategy 0] Optimize ALPHA and RANGE of random weights with metaheuristics\
 Weights are randomized and polynomial coefficients are computed as a least-squares solution
 
-[Strategy 1] Optimize ALPHA and W w/ metaheuristics
+[Strategy 1] Optimize ALPHA and **W** with metaheuristics\
 Polynomial coefficients are computed as a least-squares solution
 
-[Strategy 2] Optimize ALPHA, W and C w/ metaheuristics
+[Strategy 2] Optimize ALPHA, **W** and **C** with metaheuristics
 
 ## Organization of the repository:
 
